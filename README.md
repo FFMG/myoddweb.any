@@ -2,6 +2,10 @@
 This class tries to introduce dynamic typing to c++, basically we try to remove the 'type' from the variable.
 Rather the type is decided at runtime.
 
+### Home project
+
+The home project is [myoddweb.any](https://github.com/FFMG/myoddweb.any), this is where the latest code is located and kept up to date.
+
 ## Installation
 
 `::myodd::dynamic::Any` is a standalone class that consist of 2 files, `types.h` and `any.h` so just copy those 2 files where ever you need them, (in a subfolder might be a good idea).
@@ -240,7 +244,7 @@ While this level of flexibility will never result in an equal performance with t
 #### [Division loop](doc/perfdivision.md)
 
 - std : `0.003s` | `0.003s`
-- any : `0.098s` | `0.082s`
+- any : `0.072s` | `0.079s`
 
 ## Todo
 
@@ -251,3 +255,6 @@ Those objects cannot have arithmetic done to them, (+,-,/,*)
 myodd::dynamic::And( std::string("Hello") );</strike> *(done 25/08/2016)*
 - Add ternary operator 
 - Manage [arithmetic conversions](http://stackoverflow.com/a/4814901/4584436) properly [[1]](http://en.cppreference.com/w/cpp/language/operator_arithmetic#Conversions)[[2]](https://docs.oracle.com/cd/E19205-01/819-5265/bjabw/index.html).
+- Create sample projects
+	- vs2015
+	- gcc
