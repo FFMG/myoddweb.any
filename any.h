@@ -25,7 +25,7 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.0"
+#define MYODD_ANY_VERSION        "0.1.1"
 
 // the version number is #.###.###
 // first number is major
@@ -40,6 +40,8 @@
 #include <cctype>         //  isdigit
 #include <codecvt>        //  string <-> wstring
 #include <stdlib.h>       //  std::strtoll / std::strtoull
+#include <type_traits>    //  std::is_trivially_copyable
+                          //  std::is_pointer
 
 #include "types.h"        // data type
 
@@ -58,6 +60,9 @@ namespace myodd {
         _svalue(nullptr),
         _swvalue(nullptr),
         _lcvalue(0),
+        _ltvalue(0),
+        _tvalue(nullptr),
+        _ptvalue(nullptr),
         _type(Type::Misc_null),
         _stringStatus(StringStatus_Not_A_Number)
       {
@@ -140,6 +145,18 @@ namespace myodd {
             std::memset(_cvalue, '\0', _lcvalue);
             std::memcpy(_cvalue, other._cvalue, _lcvalue);
             _stringStatus = other._stringStatus;
+          }
+
+          // copy the trivial pointer
+          _ptvalue = other._ptvalue;
+
+          // copy the trivial value
+          if (other._ltvalue > 0 && other._tvalue)
+          {
+            _ltvalue = other._ltvalue;
+            _tvalue = new char[_ltvalue];
+            std::memset(_tvalue, '0', _ltvalue);
+            std::memcpy(_tvalue, other._tvalue, _ltvalue);
           }
         }
         return *this;
@@ -1106,6 +1123,13 @@ namespace myodd {
       }
 
     protected:
+      /**
+       * Regadless the data type, we try and guess that the number type could be.
+       * mainly used for string, so we can guess the string type.
+       * If this is a number we will return the number type, otherwse we will try and work it out.
+       * If we do not know we will return Integer_int
+       * @return dynamic::Type the string type.
+       */ 
       dynamic::Type NumberType() const
       {
         //  if it is not a character then just use whatever we have
@@ -1343,6 +1367,12 @@ namespace myodd {
           // all the values should be the same but there is no point in checking.
           return 0;
         }
+
+        // are we comparing trivial structures
+        if (lhs.IsTrivial() || rhs.IsTrivial() )
+        {
+          return CompareTrivial( lhs, rhs);
+        }
         
         //  find the 'common' type
         // in the case of 2 characters we could end up comparing 2xzeros
@@ -1456,6 +1486,30 @@ namespace myodd {
       }
 
       /**
+       * Compare one or more trivial cases.
+       * @throw if we are unable to compare, (not same types, not same sizes etc...)
+       * @return short 0 if they are the same or -1 if not.
+       */
+      static short CompareTrivial(const Any& lhs, const Any& rhs)
+      {
+        // are they both trivial?
+        if (!lhs.IsTrivial() || !rhs.IsTrivial())
+        {
+          // We cannot compare non trivials.
+          throw std::bad_cast();
+        }
+
+        // are they the same size
+        if (lhs._ltvalue != rhs._ltvalue)
+        {
+          return 1;
+        }
+
+        // they look the same, so we can now compare them both,
+        return (std::memcmp(lhs._tvalue, rhs._tvalue, lhs._ltvalue) != 0 ? -1 : 0);
+      }
+
+      /**
        * Try and create from a given value.
        * @throw std::bad_cast() if we are trying to create from an unknwon value.
        * @param const T& value the value we are trying to create from.
@@ -1475,36 +1529,13 @@ namespace myodd {
           _ldvalue = 0;
           return;
 
-        case dynamic::Boolean_bool:
-          _llivalue = ( value ? 1: 0 );
-          _ldvalue = ( value ? 1 : 0 );
-          return;
-
-        // int
-        case dynamic::Integer_short_int:
-        case dynamic::Integer_unsigned_short_int:
-        case dynamic::Integer_int:
-        case dynamic::Integer_unsigned_int:
-        case dynamic::Integer_long_int:
-        case dynamic::Integer_unsigned_long_int:
-        case dynamic::Integer_long_long_int:
-        case dynamic::Integer_unsigned_long_long_int:
-          // we can cast those into long/long
-          _llivalue = static_cast<long long int>(value);
-          _ldvalue = static_cast<long double>(_llivalue);
-          return;
-
-        // double
-        case dynamic::Floating_point_double:
-        case dynamic::Floating_point_float:
-        case dynamic::Floating_point_long_double:
-          // we can cast those into long/long
-          _ldvalue = static_cast<long double>(value);
-          _llivalue = static_cast<long long int>(_ldvalue);
-          return;
-
         case dynamic::Misc_unknown:
-          break;
+          // Objects of trivially - copyable types are the only C++ objects that 
+          // may be safely copied with std::memcpy
+          CreateFromTrivial( value );
+
+          // done
+          return;
 
         default:
           // is this a new type that we are not handling?
@@ -1528,6 +1559,13 @@ namespace myodd {
 
         // set the type
         _type = dynamic::get_type<T>::value;
+
+        // if unknown try and set is as a pointer.
+        if (_type == dynamic::Misc_unknown)
+        {
+          CreateFromTrivial<T*>(value);
+          return;
+        }
 
         // if not null then we can set it.
         if (nullptr != value)
@@ -1576,6 +1614,134 @@ namespace myodd {
           // we could not deduce the value from this.
           throw std::bad_cast();
         }
+      }
+
+      /**
+       * Create from a boolean value.
+       * @param const bool& value the bool value.
+       */
+      template<>
+      void CastFrom<bool>(const bool& value)
+      {
+        // clear all the values.
+        CleanValues();
+
+        // set the type
+        _type = dynamic::get_type<bool>::value;
+
+        // set the values
+        _llivalue = (value ? 1 : 0);
+        _ldvalue = (value ? 1 : 0);
+      }
+
+      /**
+       * Create from a float value.
+       * @param const float& value the number value.
+       */
+      template<>
+      void CastFrom<float>(const float& value)
+      {
+        CreateFromDouble(value);
+      }
+
+      /**
+       * Create from a double value.
+       * @param const double& value the number value.
+       */
+      template<>
+      void CastFrom<double>(const double& value)
+      {
+        CreateFromDouble(value);
+      }
+
+      /**
+       * Create from a long double value.
+       * @param const long double& value the number value.
+       */
+      template<>
+      void CastFrom <long double> (const long double& value)
+      {
+        CreateFromDouble(value);
+      }
+
+      /**
+       * Create from a short int value.
+       * @param const short int& value the number value.
+       */
+      template<>
+      void CastFrom <short int> (const short int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from an unsigned short int value.
+       * @param const unsigned short int& value the number value.
+       */
+      template<>
+      void CastFrom <unsigned short int> (const unsigned short int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from an int value.
+       * @param const int& value the number value.
+       */
+      template<>
+      void CastFrom <int> (const int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from an unsigned int value.
+       * @param const unsigned int& value the number value.
+       */
+      template<>
+      void CastFrom <unsigned int> (const unsigned int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from a long int value.
+       * @param const long int& value the number value.
+       */
+      template<>
+      void CastFrom < long int> (const long int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from a unsigned long int value.
+       * @param const unsigned long int& value the number value.
+       */
+      template<>
+      void CastFrom <unsigned long int> (const unsigned long int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from a long long int value.
+       * @param const long long int& value the number value.
+       */
+      template<>
+      void CastFrom <long long int> (const long long int& value)
+      {
+        CreateFromInteger(value);
+      }
+
+      /**
+       * Create from a unsigned long int value.
+       * @param const unsigned long long int& value the number value.
+       */
+      template<>
+      void CastFrom <unsigned long long int> (const unsigned long long int& value)
+      {
+        CreateFromInteger(value);
       }
 
       /**
@@ -1790,45 +1956,128 @@ namespace myodd {
       {
         switch ( Type() )
         {
-        case dynamic::Type::Misc_null:
-          return 0;
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          return CastToTrivial<T>();
 
-        // char
-        case dynamic::Type::Character_char:
-        case dynamic::Type::Character_unsigned_char:
-        case dynamic::Type::Character_signed_char:
-        case dynamic::Type::Character_wchar_t:
-          if (dynamic::is_type_floating(NumberType()))
-          {
-            return static_cast<T>(_ldvalue);
-          }
-          return static_cast<T>(_llivalue);
-
-        // Integer
-        case dynamic::Type::Integer_unsigned_int:
-        case dynamic::Type::Integer_int:
-        case dynamic::Type::Integer_short_int:
-        case dynamic::Type::Integer_unsigned_short_int:
-        case dynamic::Type::Integer_long_int:
-        case dynamic::Type::Integer_unsigned_long_int:
-        case dynamic::Type::Integer_long_long_int:
-        case dynamic::Type::Integer_unsigned_long_long_int:
-          return static_cast<T>(_llivalue);
-
-        case dynamic::Type::Floating_point_double:
-        case dynamic::Type::Floating_point_float:
-        case dynamic::Type::Floating_point_long_double:
-          return static_cast<T>(_ldvalue);
-
-        case dynamic::Type::Boolean_bool:
-          return static_cast<T>(_ldvalue);
-
+        // none of the fundamental types are handled here.
+        // each has its own function
         default:
           break; 
         }
 
         // we cannot cast this.
         throw std::bad_cast();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return short int the value.
+       */
+      template<>
+      float CastTo() const
+      {
+        return CastToFundamental<float>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return double the value.
+       */
+      template<>
+      double CastTo() const
+      {
+        return CastToFundamental<double>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return long double the value.
+       */
+      template<>
+      long double CastTo() const
+      {
+        return CastToFundamental<long double>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return short int the value.
+       */
+      template<>
+      short int CastTo() const
+      {
+        return CastToFundamental<short int>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return unsigned short int the value.
+       */
+      template<>
+      unsigned short int CastTo() const
+      {
+        return CastToFundamental<unsigned short int>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return int the value.
+       */
+      template<>
+      int CastTo() const
+      {
+        return CastToFundamental<int>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return unsigned int the value.
+       */
+      template<>
+      unsigned int CastTo() const
+      {
+        return CastToFundamental<unsigned int>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return long the value.
+       */
+      template<>
+      long CastTo() const
+      {
+        return CastToFundamental<long>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return unsigned long the value.
+       */
+      template<>
+      unsigned long CastTo() const
+      {
+        return CastToFundamental<unsigned long> ();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return long long the value.
+       */
+      template<>
+      long long CastTo() const
+      {
+        return CastToFundamental<long long>();
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return unsigned long long the value.
+       */
+      template<>
+      unsigned long long CastTo() const
+      {
+        return CastToFundamental<unsigned long long> ();
       }
 
       /**
@@ -1863,12 +2112,304 @@ namespace myodd {
 
       /**
        * Try and cast this to a posible value.
+       * @return wchar_t* the value we are looking for.
+       */
+      template<>
+      std::wstring CastTo<std::wstring>() const
+      {
+        return std::wstring( (wchar_t*)ReturnFromCharacters<const wchar_t>());
+      }
+
+      /**
+       * Try and cast this to a posible value.
        * @return const wchar_t* the value we are looking for.
        */
       template<>
       const wchar_t* CastTo<const wchar_t*>() const
       {
         return ReturnFromCharacters<const wchar_t>();
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return char the value we are looking for.
+      */
+      template<>
+      char CastTo<char>() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          return '\0';
+
+        case dynamic::Character_wchar_t:
+          return static_cast<char>(*(wchar_t*)_cvalue);
+
+        case dynamic::Character_char:
+          return static_cast<char>(*(char*)_cvalue);
+
+        case dynamic::Character_signed_char:
+          return static_cast<char>(*(signed char*)_cvalue);
+
+        case dynamic::Character_unsigned_char:
+          return static_cast<char>(*(unsigned char*)_cvalue);
+        }
+        return static_cast<char>(_llivalue);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return wchar_t the value we are looking for.
+      */
+      template<>
+      wchar_t CastTo<wchar_t>() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          return '\0';
+
+        case dynamic::Character_wchar_t:
+          return static_cast<wchar_t>(*(wchar_t*)_cvalue);
+
+        case dynamic::Character_char:
+          return static_cast<wchar_t>(*(char*)_cvalue);
+
+        case dynamic::Character_signed_char:
+          return static_cast<wchar_t>(*(signed char*)_cvalue);
+
+        case dynamic::Character_unsigned_char:
+          return static_cast<wchar_t>(*(unsigned char*)_cvalue);
+        }
+        return static_cast<wchar_t>(_llivalue);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return unsigned char the value we are looking for.
+      */
+      template<>
+      unsigned char CastTo<unsigned char>() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          return '\0';
+
+        case dynamic::Character_wchar_t:
+          return static_cast<unsigned char>(*(wchar_t*)_cvalue);
+
+        case dynamic::Character_char:
+          return static_cast<unsigned char>(*(char*)_cvalue);
+
+        case dynamic::Character_signed_char:
+          return static_cast<unsigned char>(*(signed char*)_cvalue);
+
+        case dynamic::Character_unsigned_char:
+          return static_cast<unsigned char>(*(unsigned char*)_cvalue);
+        }
+        return static_cast<unsigned char>(_llivalue);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return unsigned char the value we are looking for.
+      */
+      template<>
+      signed char CastTo<signed char>() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          return '\0';
+
+        case dynamic::Character_wchar_t:
+          return static_cast<signed char>(*(wchar_t*)_cvalue);
+
+        case dynamic::Character_char:
+          return static_cast<signed char>(*(char*)_cvalue);
+
+        case dynamic::Character_signed_char:
+          return static_cast<signed char>(*(signed char*)_cvalue);
+
+        case dynamic::Character_unsigned_char:
+          return static_cast<signed char>(*(unsigned char*)_cvalue);
+        }
+        return static_cast<signed char>(_llivalue);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * we have a specialised function as casting to bool can be inefficent.
+      * @return bool the value we are looking for.
+      */
+      template<>
+      bool CastTo<bool>() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          // null is false/
+          return false;
+        }
+
+        // if we are a float we must use it, in case we have 0.0001
+        // if we were using the long long int then we would only have 0
+        if (dynamic::is_type_floating(NumberType()))
+        {
+          return (_ldvalue != 0);
+        }
+
+        // but we use the int if we are told to
+        // in case the long double is not valid.
+        return (_llivalue != 0);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return short int the value.
+      */
+      template<class T>
+      std::enable_if_t<!std::is_pointer<T>::value, T> CastToTrivial() const
+      {
+        // as it is not a pointer, it has to be trivially copyable.
+        if (!std::is_trivially_copyable<T>::value)
+        {
+          // we cannot convert this T to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // As we are looking for the non pointer value we can 
+        // only return the non pointer version of the trivial
+        // we cannot cast our pointer into whatever decltype(T) was passed to us.
+        if (Type() != dynamic::Misc_trivial)
+        {
+          // we cannot convert this to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // can we fit our data exactly inside the structure that they are trying to make us use.
+        if (sizeof T != _ltvalue)
+        {
+          throw std::bad_cast();
+        }
+
+        // copy the trival value.
+        T trivial = {};
+        std::memcpy(&trivial, _tvalue, _ltvalue);
+
+        // done
+        return trivial;
+      }
+
+      /**
+       * Cast this to a fundamental type
+       * @return short int the value.
+       */
+      template<class T>
+      std::enable_if_t<std::is_pointer<T>::value, T> CastToTrivial() const
+      {
+        if (!IsTrivial())
+        {
+          // we cannot convert this to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // we konw, that we handle certain pointers, (strings, ints etc)
+        // so there is no way that we can cast a trivial value to something
+        // we know it cannot be, only unknown types are 'trivial'
+        if(dynamic::Misc_unknown != dynamic::get_type<std::remove_pointer<T>::type>::value )
+        {
+          // we cannot cast to this T* as we know
+          // that it was not what it was created with, (as we handle known pointers).
+          throw std::bad_cast();
+        }
+
+        // are _we_ a non pointer trivial?
+        // in that case we can return our address.
+        // the user should not be allowed to delete
+        //  it as they did not create this value.
+        if (dynamic::Misc_trivial == Type())
+        {
+          return (T)_tvalue;
+        }
+
+        // we are a pointer value so we can return it.
+        return (T)_ptvalue;
+      }
+
+      /**
+      * Do common casting to known fundamental type.
+      * @return T the 'fundamental' cast
+      */
+      template<class T>
+      T CastToFundamental() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          return 0;
+
+          // char
+        case dynamic::Character_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_wchar_t:
+          if (dynamic::is_type_floating(NumberType()))
+          {
+            return static_cast<T>(_ldvalue);
+          }
+          return static_cast<T>(_llivalue);
+
+          // Integer
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+          return static_cast<T>(_llivalue);
+
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_long_double:
+          return static_cast<T>(_ldvalue);
+
+        case dynamic::Boolean_bool:
+          return static_cast<T>(_ldvalue);
+
+        default:
+          break;
+        }
+
+        // we cannot cast this.
+        throw std::bad_cast();
       }
 
       /**
@@ -1880,19 +2421,23 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Type::Misc_null:
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
           return '\0';
 
-        case dynamic::Type::Character_wchar_t:
+        case dynamic::Character_wchar_t:
           if (nullptr == _svalue)
           {
             const_cast<Any*>(this)->CreateString();
           }
           return (T*)_svalue->c_str();
 
-        case dynamic::Type::Character_char:
-        case dynamic::Type::Character_signed_char:
-        case dynamic::Type::Character_unsigned_char:
+        case dynamic::Character_char:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
           return static_cast<char*>(_cvalue);
         }
 
@@ -1913,15 +2458,19 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Type::Misc_null:
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
           return '\0';
 
-        case dynamic::Type::Character_wchar_t:
+        case dynamic::Character_wchar_t:
           return static_cast<wchar_t*>( (void*)_cvalue);
 
-        case dynamic::Type::Character_char:
-        case dynamic::Type::Character_signed_char:
-        case dynamic::Type::Character_unsigned_char:
+        case dynamic::Character_char:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
           if (nullptr == _swvalue)
           {
             const_cast<Any*>(this)->CreateWideString();
@@ -2021,135 +2570,13 @@ namespace myodd {
       }
 
       /**
-       * Try and cast this to a posible value.
-       * @return char the value we are looking for.
-       */
-      template<>
-      char CastTo<char>() const
-      {
-        switch (Type())
-        {
-        case dynamic::Type::Misc_null:
-          return '\0';
-
-        case dynamic::Type::Character_wchar_t:
-          return static_cast<char>(*(wchar_t*)_cvalue);
-
-        case dynamic::Type::Character_char:
-          return static_cast<char>(*(char*)_cvalue);
-
-        case dynamic::Type::Character_signed_char:
-          return static_cast<char>(*(signed char*)_cvalue);
-
-        case dynamic::Type::Character_unsigned_char:
-          return static_cast<char>(*(unsigned char*)_cvalue);
-        }
-        return static_cast<char>(_llivalue);
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @return wchar_t the value we are looking for.
-      */
-      template<>
-      wchar_t CastTo<wchar_t>() const
-      {
-        switch (Type())
-        {
-        case dynamic::Type::Misc_null:
-          return '\0';
-
-        case dynamic::Type::Character_wchar_t:
-          return static_cast<wchar_t>(*(wchar_t*)_cvalue);
-
-        case dynamic::Type::Character_char:
-          return static_cast<wchar_t>(*(char*)_cvalue);
-
-        case dynamic::Type::Character_signed_char:
-          return static_cast<wchar_t>(*(signed char*)_cvalue);
-
-        case dynamic::Type::Character_unsigned_char:
-          return static_cast<wchar_t>(*(unsigned char*)_cvalue);
-        }
-        return static_cast<wchar_t>(_llivalue);
-      }
-
-      /**
-       * Try and cast this to a posible value.
-       * @return unsigned char the value we are looking for.
-       */
-      template<>
-      unsigned char CastTo<unsigned char>() const
-      {
-        switch (Type())
-        {
-        case dynamic::Type::Misc_null:
-          return '\0';
-
-        case dynamic::Type::Character_wchar_t:
-          return static_cast<unsigned char>(*(wchar_t*)_cvalue);
-
-        case dynamic::Type::Character_char:
-          return static_cast<unsigned char>(*(char*)_cvalue);
-
-        case dynamic::Type::Character_signed_char:
-          return static_cast<unsigned char>(*(signed char*)_cvalue);
-
-        case dynamic::Type::Character_unsigned_char:
-          return static_cast<unsigned char>(*(unsigned char*)_cvalue);
-        }
-        return static_cast<unsigned char>(_llivalue);
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @return unsigned char the value we are looking for.
-      */
-      template<>
-      signed char CastTo<signed char>() const
-      {
-        switch (Type())
-        {
-        case dynamic::Type::Misc_null:
-          return '\0';
-
-        case dynamic::Type::Character_wchar_t:
-          return static_cast<signed char>(*(wchar_t*)_cvalue);
-
-        case dynamic::Type::Character_char:
-          return static_cast<signed char>(*(char*)_cvalue);
-
-        case dynamic::Type::Character_signed_char:
-          return static_cast<signed char>(*(signed char*)_cvalue);
-
-        case dynamic::Type::Character_unsigned_char:
-          return static_cast<signed char>(*(unsigned char*)_cvalue);
-        }
-        return static_cast<signed char>(_llivalue);
-      }
-
-      /**
-       * Try and cast this to a posible value.
-       * @return bool the value we are looking for.
-       */
-      template<>
-      bool CastTo<bool>() const
-      {
-        switch (Type())
-        {
-        case dynamic::Type::Misc_null:
-          return false;
-        }
-
-        //  value to true/false
-        return (_llivalue != 0 ? true : false);
-      }
-
-      /**
        * Clean up the value(s)
        */
       void CleanValues()
       {
+        // delete the trivial value
+        delete _tvalue;
+
         // delete the char if need be
         delete _cvalue;
 
@@ -2160,9 +2587,102 @@ namespace myodd {
         // reset the values
         _llivalue = 0;
         _ldvalue = 0;
+        _lcvalue = 0;
+        _ltvalue = 0;
         _cvalue = nullptr;
         _svalue = nullptr;
         _swvalue = nullptr;
+        _tvalue = nullptr;
+        _ptvalue = nullptr;
+      }
+
+      /**
+       * Create a value from a double/float/long double number..
+       * @param const T* number the number we are creating from.
+       */
+      template<class T>
+      void CreateFromDouble(const T& number)
+      {
+        // clear all the values.
+        CleanValues();
+
+        // set the type
+        _type = dynamic::get_type<T>::value;
+
+        // set the values
+        _ldvalue = static_cast<long double>(number);
+        _llivalue = static_cast<long long int>(_ldvalue);
+      }
+
+      /**
+       * Create a value from a int/long/long long...
+       * @param const T* number the number we are creating from.
+       */
+      template<class T>
+      void CreateFromInteger(const T& number)
+      {
+        // clear all the values.
+        CleanValues();
+
+        // set the type
+        _type = dynamic::get_type<T>::value;
+
+        // set the values.
+        _llivalue = static_cast<long long int>(number);
+        _ldvalue = static_cast<long double>(_llivalue);
+      }
+
+      /**
+       * Create from a trivally copyable value.
+       * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
+       * @param const T& trivial the structure/class we want to copy from.
+       */
+      template<class T>
+      std::enable_if_t<!std::is_pointer<T>::value> CreateFromTrivial( T trivial)
+      {
+        // as it is not a pointer value, it has to be trivially copyable.
+        if (!std::is_trivially_copyable<T>::value)
+        {
+          throw std::bad_cast();
+        }
+
+        // clear all the values.
+        CleanValues();
+
+        // set the type
+        _type = dynamic::Misc_trivial;
+
+        // set the values.
+        _llivalue = 0;
+        _ldvalue = 0;
+
+        // copy the trival value.
+        _ltvalue = sizeof(T);
+        _tvalue = new char[_ltvalue];
+        std::memset(_tvalue, 0, _ltvalue);
+        std::memcpy(_tvalue, &trivial, _ltvalue);
+      }
+
+      /**
+       * Create from a trivally copyable value.
+       * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
+       * @param const T& trivial the structure/class we want to copy from.
+       */
+      template<class T>
+      std::enable_if_t<std::is_pointer<T>::value> CreateFromTrivial(const T& trivial)
+      {
+        // clear all the values.
+        CleanValues();
+
+        // set the type
+        _type = dynamic::Misc_trivial_ptr;
+
+        // set the values.
+        _llivalue = 0;
+        _ldvalue = 0;
+
+        // copy the trival pointer value that was given to us.
+        _ptvalue = (void*)trivial;
       }
 
       /**
@@ -2546,6 +3066,27 @@ namespace myodd {
         StringStatus_Floating_Neg_Number,            // '-123.1'
       };
 
+      /**
+       * Check if this is a trivial type or not.
+       * @return boolean if *this is trivial or not.
+       */
+      bool IsTrivial() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          // trivial
+          return true;
+
+        default:
+          break;
+        }
+
+        // no trivial
+        return false;
+      }
+
       /** 
        * Check if our string is a number or not.
        * @param bool allowPartial if partial strings are allowed or not.
@@ -2739,6 +3280,10 @@ namespace myodd {
       // this is the given character value either char/signed char/unsigned char/wide
       char* _cvalue;
       size_t _lcvalue;
+
+      void* _ptvalue;
+      char* _tvalue;
+      size_t _ltvalue;
 
       // the status of the string.
       StringStatus _stringStatus;
