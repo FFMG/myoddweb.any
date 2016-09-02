@@ -292,7 +292,7 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      bool operator> (const Any& rhs) const { return !(rhs < *this && *this == rhs); }
+      bool operator> (const Any& rhs) const { return !(rhs < *this || rhs == *this); }
 
       /**
       * Relational operator greater than
