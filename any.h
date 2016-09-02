@@ -277,10 +277,7 @@ namespace myodd {
        * @param const T& rhs
        * @return bool if lhs < rhs
        */
-      template<class T> friend bool operator< (const Any& lhs, const T& rhs )
-      {
-        return (lhs < Any(rhs));
-      }
+      template<class T> friend bool operator< (const Any& lhs, const T& rhs ){ return (lhs < Any(rhs)); }
 
       /**
       * Relational operator less than
@@ -288,24 +285,14 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs < rhs
       */
-      template<class T> friend bool operator< (const T& lhs, const Any& rhs) {
-        return Any(lhs) < rhs;
-      }
+      template<class T> friend bool operator< (const T& lhs, const Any& rhs) { return Any(lhs) < rhs; }
 
       /**
       * Relational operator greater than
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      bool operator> (const Any& rhs) const { return rhs <= *this; }
-
-      /**
-      * Relational operator greater than
-      * @param const T& lhs
-      * @param const Any& rhs
-      * @return bool if lhs > rhs
-      */
-      template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return rhs <= lhs; }
+      bool operator> (const Any& rhs) const { return !(rhs < *this && *this == rhs); }
 
       /**
       * Relational operator greater than
@@ -313,7 +300,15 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      template<class T>  friend bool operator> (const Any& lhs, const T& rhs) { return rhs <= lhs; }
+      template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return !(rhs <= Any(lhs)); }
+
+      /**
+      * Relational operator greater than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs > rhs
+      */
+      template<class T>  friend bool operator> (const Any& lhs, const T& rhs) { return !(Any(rhs) <= lhs); }
 
       /**
       * Relational operator less or equal than
@@ -328,7 +323,7 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs <= rhs
       */
-      template<class T> friend bool operator<=(const T& lhs, const Any& rhs) { return !(lhs > rhs); }
+      template<class T> friend bool operator<=(const T& lhs, const Any& rhs) { return !(Any(lhs) > rhs); }
 
       /**
       * Relational operator less or equal than
@@ -336,7 +331,7 @@ namespace myodd {
       * @param const T& rhs
       * @return bool if lhs <= rhs
       */
-      template<class T> friend bool operator<=(const Any& lhs, const T& rhs) { return !(lhs > rhs); }
+      template<class T> friend bool operator<=(const Any& lhs, const T& rhs) { return !(lhs > Any(rhs)); }
 
       /**
       * Relational operator more or equal than
@@ -351,7 +346,15 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs >= rhs
       */
-      template<class T> friend bool operator>=(const T& lhs, const Any& rhs) { return !(lhs < rhs); }
+      template<class T> friend bool operator>=(const T& lhs, const Any& rhs) { return !(Any(lhs) < rhs); }
+
+      /**
+      * Relational operator more or equal than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs >= rhs
+      */
+      template<class T> friend bool operator>=(const Any& lhs, const T& rhs) { return !(lhs < Any(rhs)); }
 
       //
       // +operators
