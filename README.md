@@ -119,6 +119,8 @@ Similar apps that use
 #### Map and/or Vectors
 In a vector you could totally remove the data type
 
+##### Vector
+
     #include "dynamic/any.h"
     #include <vector>
     ...
@@ -133,6 +135,22 @@ In a vector you could totally remove the data type
     {
       // universe == solved!
     }
+
+##### Map
+
+    #include <map>
+    #include "dynamic/any.h"
+
+    // we need a vector of anys.
+    std::map< ::myodd::dynamic::Any, ::myodd::dynamic::Any > myMap;
+  
+    // add a few items.
+    myMap[1] = "Hello";
+    myMap["Something"] = "Else";
+  
+    assert( myMap[1] == "Hello" );
+    assert( myMap["Something"] == "Else" );
+  
 
 #### Structure/classes.
 You can pass so called, trivial structures and classes.
