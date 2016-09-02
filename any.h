@@ -25,7 +25,7 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.2"
+#define MYODD_ANY_VERSION        "0.1.3"
 
 // the version number is #.###.###
 // first number is major
@@ -42,7 +42,7 @@
 #include <codecvt>        //  string <-> wstring
 #include <stdlib.h>       //  std::strtoll / std::strtoull
 #include <type_traits>    //  std::is_trivially_copyable
-                          //  std::is_pointer
+//  std::is_pointer
 
 #include "types.h"        // data type
 
@@ -52,8 +52,8 @@ namespace myodd {
     {
     public:
       /**
-       * default constructor.
-       */
+      * default constructor.
+      */
       Any() :
         _llivalue(0),
         _ldvalue(0),
@@ -70,30 +70,28 @@ namespace myodd {
       }
 
       /**
-       * Copy constructor
-       * @param const int& the value we want to copy/set
-       */
+      * Copy constructor
+      * @see CreateFrom(T)
+      * @param T value the value we want to copy/set
+      */
       template<class T>
-      Any(const T& value) :
+      Any(T value) :
         Any()
       {
-        CastFrom(value);
+        CreateFrom(value);
+      }
+
+      template<class T>
+      Any(T source, size_t num ) :
+        Any()
+      {
+        CreateFromCharacters(source, num );
       }
 
       /**
-       * Copy constructor
-       * @param const int& the value we want to copy/set
-       */
-      template<class T>
-      Any(T* value) :
-        Any()
-      {
-        CastFrom(value);
-      }
-
-      /**
-       * Copy constructor
-       */
+      * Copy constructor
+      * @param const Any& any the value we are copying.
+      */
       Any(const Any& any) :
         Any()
       {
@@ -101,38 +99,44 @@ namespace myodd {
       }
 
       /**
-       * Destructor.
-       */
+      * Destructor.
+      */
       virtual ~Any()
       {
         CleanValues();
       }
 
       /**
-       * The T operator.
-       * @return T the template operator.
-       */
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
       template<class T>
       operator T() const {
+        // the return value
         T value;
-        CastTo( value );
+
+        // cast *this to value
+        CastTo(value);
+
+        // return it.
         return value;
       }
 
       /**
-       * The logical negation operator.
-       * @return false if the current value can be represented as true
-       */
+      * The logical negation operator.
+      * @return false if the current value can be represented as true
+      */
       bool operator !() const
       {
         return !((bool)*this);
       }
 
       /**
-       * The equal operator
-       * @param const Any& other the value we are trying to set.
-       * @return const Any& this value.
-       */
+      * The equal operator
+      * @param const Any& other the value we are trying to set.
+      * @return const Any& this value.
+      */
       const Any& operator = (const Any& other)
       {
         if (this != &other)
@@ -175,20 +179,20 @@ namespace myodd {
       }
 
       /**
-       * The equal operator
-       * @param const Any &other the value we are comparing
-       * @return bool if the values are equal
-       */
+      * The equal operator
+      * @param const Any &other the value we are comparing
+      * @return bool if the values are equal
+      */
       bool operator==(const Any& other) const
       {
         return (Compare(*this, other) == 0);
       }
 
       /**
-       * The friend equal operator.
-       * @param const Any &other the value we are comparing
-       * @return bool if the values are equal
-       */
+      * The friend equal operator.
+      * @param const Any &other the value we are comparing
+      * @return bool if the values are equal
+      */
       template<class T>
       friend bool operator==(const T& lhs, const Any& rhs)
       {
@@ -196,10 +200,10 @@ namespace myodd {
       }
 
       /**
-       * The friend equal operator.
-       * @param const Any &other the value we are comparing
-       * @return bool if the values are equal
-       */
+      * The friend equal operator.
+      * @param const Any &other the value we are comparing
+      * @return bool if the values are equal
+      */
       template<class T>
       friend bool operator==(const Any& lhs, const T& rhs)
       {
@@ -207,20 +211,20 @@ namespace myodd {
       }
 
       /**
-       * The not equal operator
-       * @param const Any &other the value we are comparing
-       * @return bool if the values are _not_ equal
-       */
+      * The not equal operator
+      * @param const Any &other the value we are comparing
+      * @return bool if the values are _not_ equal
+      */
       bool operator!=(const Any &other) const
       {
         return (Compare(*this, other) != 0);
       }
 
       /**
-       * The friend equal operator.
-       * @param const Any &other the value we are comparing
-       * @return bool if the values are equal
-       */
+      * The friend equal operator.
+      * @param const Any &other the value we are comparing
+      * @return bool if the values are equal
+      */
       template<class T>
       friend bool operator!=(const T& lhs, const Any& rhs)
       {
@@ -228,27 +232,27 @@ namespace myodd {
       }
 
       /**
-       * Relational operator less than
-       * @param const Any& rhs
-       * @return bool if *this < rhs
-       */
+      * Relational operator less than
+      * @param const Any& rhs
+      * @return bool if *this < rhs
+      */
       bool operator< (const Any& rhs) const
       {
         // we use the double number as it is more precise
-        if (Type() == ::myodd::dynamic::Misc_null && rhs.Type() == ::myodd::dynamic::Misc_null)
+        if (Type() == dynamic::Misc_null && rhs.Type() == dynamic::Misc_null)
         {
           //  null is not smaller than null
           return false;
         }
 
         // is the lhs null?
-        if (Type() == ::myodd::dynamic::Misc_null)
+        if (Type() == dynamic::Misc_null)
         {
           return 0 < rhs._ldvalue;
         }
 
         // is the rhs null?
-        if (rhs.Type() == ::myodd::dynamic::Misc_null)
+        if (rhs.Type() == dynamic::Misc_null)
         {
           return _ldvalue < 0;
         }
@@ -258,48 +262,50 @@ namespace myodd {
       }
 
       /**
-       * Relational operator less than
-       * @param const T& lhs
-       * @param const Any& rhs
-       * @return bool if lhs < rhs
-       */
+      * Relational operator less than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs < rhs
+      */
       template<class T> friend bool operator< (const T& lhs, const Any& rhs) {
         return Any(lhs) < rhs;
       }
 
       /**
-       * Relational operator greater than
-       * @param const T& lhs
-       * @param const Any& rhs
-       * @return bool if lhs > rhs
-       */
+      * Relational operator greater than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs > rhs
+      */
       template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return rhs < lhs; }
 
       /**
-       * Relational operator less or equal than
-       * @param const T& lhs
-       * @param const Any& rhs
-       * @return bool if lhs <= rhs
-       */
+      * Relational operator less or equal than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs <= rhs
+      */
       template<class T> friend bool operator<=(const T& lhs, const Any& rhs) { return !(lhs > rhs); }
 
       /**
-       * Relational operator more or equal than
-       * @param const T& lhs
-       * @param const Any& rhs
-       * @return bool if lhs >= rhs
-       */
+      * Relational operator more or equal than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs >= rhs
+      */
       template<class T> friend bool operator>=(const T& lhs, const Any& rhs) { return !(lhs < rhs); }
 
       //
       // +operators
       //  
-      #pragma region
+#ifdef _MSC_VER
+# pragma region
+#endif
       /**
- * Binary arithmetic operators - addition
- * @param const Any& the item we are adding to this.
- * @return Any& *this+rhs
- */
+      * Binary arithmetic operators - addition
+      * @param const Any& the item we are adding to this.
+      * @return Any& *this+rhs
+      */
       Any& operator+=(const Any& rhs)
       {
         if (rhs.UseUnsignedInteger())
@@ -314,10 +320,10 @@ namespace myodd {
       }
 
       /**
-       * Default += function add the rhs to *this.
-       * @param const T& rhs the value we are adding to *this
-       * @param *this + rhs.
-       */
+      * Default += function add the rhs to *this.
+      * @param const T& rhs the value we are adding to *this
+      * @param *this + rhs.
+      */
       template<class T>
       Any& operator+=(T rhs)
       {
@@ -326,20 +332,20 @@ namespace myodd {
       }
 
       /**
-       * Specialized += function add the rhs to *this.
-       * @param float rhs the value we are adding to *this
-       * @param *this + rhs.
-       */
+      * Specialized += function add the rhs to *this.
+      * @param float rhs the value we are adding to *this
+      * @param *this + rhs.
+      */
       Any& operator+=(long double rhs)
       {
-        return AddNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_long_double), rhs);
+        return AddNumber(CalculateType(*this, dynamic::Floating_point_long_double), rhs);
       }
 
       /**
-       * Binary arithmetic operators - addition
-       * @param const Any& the item we are adding to this.
-       * @return Any *this+rhs
-       */
+      * Binary arithmetic operators - addition
+      * @param const Any& the item we are adding to this.
+      * @return Any *this+rhs
+      */
       Any operator+(const Any& rhs) const
       {
         // copy the value
@@ -353,49 +359,49 @@ namespace myodd {
       }
 
       /**
-       * Binary arithmetic operators - addition
-       * @param Any the item we are adding to this.
-       * @param const Any& the item we are adding to this.
-       * @return Any *this+rhs
-       */
+      * Binary arithmetic operators - addition
+      * @param Any the item we are adding to this.
+      * @param const Any& the item we are adding to this.
+      * @return Any *this+rhs
+      */
       template<class T> friend Any operator+(Any lhs, const T& rhs) { lhs += rhs; return lhs; }
 
       /**
-       * Add one to the current value.
-       * @return Any *this +1
-       */
+      * Add one to the current value.
+      * @return Any *this +1
+      */
       Any& operator++()
       {
         // save the current type.
-        ::myodd::dynamic::Type type = NumberType();
+        dynamic::Type type = NumberType();
 
         // add an int.
-        if (::myodd::dynamic::is_type_floating(type))
+        if (dynamic::is_type_floating(type))
         {
           // we cannot call ++_ldvalue as the value is passed by reference.
-          // to CastFrom( cons T& ) and the first thing we do is clear the value
+          // to CreateFrom( cons T& ) and the first thing we do is clear the value
           // so _ldvalue/_llivalue become 0
-          CastFrom( _ldvalue+1 );
+          CreateFrom(_ldvalue + 1);
         }
         else
         {
           // we cannot call ++_ldvalue as the value is passed by reference.
-          // to CastFrom( cons T& ) and the first thing we do is clear the value
+          // to CreateFrom( cons T& ) and the first thing we do is clear the value
           // so _ldvalue/_llivalue become 0
-          CastFrom( _llivalue+1 );
+          CreateFrom(_llivalue + 1);
         }
 
         // update the type.
-        _type = CalculateType(type, ::myodd::dynamic::Integer_int);
+        _type = CalculateType(type, dynamic::Integer_int);
 
         // return this.
         return *this;
       }
 
       /**
-       * Add one to the current value.
-       * @return Any *this +1
-       */
+      * Add one to the current value.
+      * @return Any *this +1
+      */
       Any operator++(int)
       {
         Any tmp(*this);
@@ -406,24 +412,28 @@ namespace myodd {
       //
       // +operators
       //
-      #pragma endregion +=operators
+#ifdef _MSC_VER
+# pragma endregion +=operators
+#endif
 
       //
       // -operators
       //  
-      #pragma region
+#ifdef _MSC_VER
+# pragma region
+#endif
       /**
-       * Binary arithmetic operators - substraction
-       * @param const Any& the item we are subtracting to this.
-       * @return Any& *this-rhs
-       */
+      * Binary arithmetic operators - subtraction
+      * @param const Any& the item we are subtracting to this.
+      * @return Any& *this-rhs
+      */
       Any& operator-=(const Any& rhs)
       {
         if (rhs.UseUnsignedInteger())
         {
           return SubtractNumber(CalculateType(*this, rhs), (unsigned long long int)rhs._llivalue);
         }
-        
+
         if (rhs.UseSignedInteger())
         {
           return SubtractNumber(CalculateType(*this, rhs), (long long int)rhs._llivalue);
@@ -432,10 +442,10 @@ namespace myodd {
       }
 
       /**
-       * Default -= function substract the rhs to *this.
-       * @param const T& rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Default -= function substract the rhs to *this.
+      * @param const T& rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       template<class T>
       Any& operator-=(T rhs)
       {
@@ -444,120 +454,120 @@ namespace myodd {
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param short rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param short rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(short int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_short_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_short_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param unsigned short int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param unsigned short int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(unsigned short int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_short_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_unsigned_short_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param unsigned int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param unsigned int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(unsigned int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_unsigned_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param long int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param long int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(long int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_long_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_long_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param unsigned long int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param unsigned long int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(unsigned long int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_long_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_unsigned_long_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param long long int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param long long int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(long long int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_long_long_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_long_long_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param unsigned long long int rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param unsigned long long int rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(unsigned long long int rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_long_long_int), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Integer_unsigned_long_long_int), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param float rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param float rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(float rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_float), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Floating_point_float), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param double rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param double rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(double rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_double), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Floating_point_double), rhs);
       }
 
       /**
-       * Specialized -= function substract the rhs to *this.
-       * @param float rhs the value we are subtracting from *this
-       * @param *this - rhs.
-       */
+      * Specialized -= function substract the rhs to *this.
+      * @param float rhs the value we are subtracting from *this
+      * @param *this - rhs.
+      */
       Any& operator-=(long double rhs)
       {
-        return SubtractNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_long_double), rhs);
+        return SubtractNumber(CalculateType(*this, dynamic::Floating_point_long_double), rhs);
       }
 
       /**
-       * Binary arithmetic operators - substraction
-       * @param const Any& the item we are subtracting from *this.
-       * @return Any *this-rhs
-       */
+      * Binary arithmetic operators - substraction
+      * @param const Any& the item we are subtracting from *this.
+      * @return Any *this-rhs
+      */
       Any operator-(const Any& rhs) const
       {
         // copy the value
@@ -571,50 +581,50 @@ namespace myodd {
       }
 
       /**
-       * Binary arithmetic operators - substraction
-       * @param Any the item we are subtracting from *this.
-       * @param const Any& the item we are subtracting from *this.
-       * @return Any *this-rhs
-       */
+      * Binary arithmetic operators - substraction
+      * @param Any the item we are subtracting from *this.
+      * @param const Any& the item we are subtracting from *this.
+      * @return Any *this-rhs
+      */
       template<class T> friend Any operator-(Any lhs, const T& rhs) { lhs -= rhs; return lhs; }
 
       /**
-       * substract one from the current value.
-       * @return Any *this -1
-       */
+      * substract one from the current value.
+      * @return Any *this -1
+      */
       Any& operator--()
       {
         // save the current type.
-        ::myodd::dynamic::Type type = NumberType();
+        dynamic::Type type = NumberType();
 
         // substract an int
         // add an int.
-        if (::myodd::dynamic::is_type_floating(type))
+        if (dynamic::is_type_floating(type))
         {
           // we cannot call ++_ldvalue as the value is passed by reference.
-          // to CastFrom( cons T& ) and the first thing we do is clear the value
+          // to CreateFrom( cons T& ) and the first thing we do is clear the value
           // so _ldvalue/_llivalue become 0
-          CastFrom( _ldvalue-1 );
+          CreateFrom(_ldvalue - 1);
         }
         else
         {
           // we cannot call ++_ldvalue as the value is passed by reference.
-          // to CastFrom( cons T& ) and the first thing we do is clear the value
+          // to CreateFrom( cons T& ) and the first thing we do is clear the value
           // so _ldvalue/_llivalue become 0
-          CastFrom( _llivalue-1 );
+          CreateFrom(_llivalue - 1);
         }
 
         // update the type.
-        _type = CalculateType(type, ::myodd::dynamic::Integer_int);
+        _type = CalculateType(type, dynamic::Integer_int);
 
         // return this.
         return *this;
       }
 
       /**
-       * substract one from the current value.
-       * @return Any *this -1
-       */
+      * substract one from the current value.
+      * @return Any *this -1
+      */
       Any operator--(int)
       {
         Any tmp(*this);
@@ -625,20 +635,24 @@ namespace myodd {
       //
       // -operators
       //
-      #pragma endregion -=operators
-      
+#ifdef _MSC_VER
+# pragma endregion -=operators
+#endif
+
       //
       // *operators
       //  
-      #pragma region
+#ifdef _MSC_VER
+# pragma region
+#endif
       /**
-       * Binary arithmetic operators - multiplication
-       * @param const Any& the item we are multiplying from this.
-       * @return Any& *this*rhs
-       */
+      * Binary arithmetic operators - multiplication
+      * @param const Any& the item we are multiplying from this.
+      * @return Any& *this*rhs
+      */
       Any& operator*=(const Any& rhs)
       {
-        if (::myodd::dynamic::is_type_floating(rhs.NumberType()))
+        if (dynamic::is_type_floating(rhs.NumberType()))
         {
           return MultiplyNumber(CalculateType(*this, rhs), rhs._ldvalue);
         }
@@ -646,10 +660,10 @@ namespace myodd {
       }
 
       /**
-       * Default *= function multiply the rhs and *this.
-       * @param const T& rhs the value we are multiplying with *this
-       * @param *this * rhs.
-       */
+      * Default *= function multiply the rhs and *this.
+      * @param const T& rhs the value we are multiplying with *this
+      * @param *this * rhs.
+      */
       template<class T>
       Any& operator*=(T rhs)
       {
@@ -658,120 +672,120 @@ namespace myodd {
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param short int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( short int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param short int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(short int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_short_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_short_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param unsigned short int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( unsigned short int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param unsigned short int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(unsigned short int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_short_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_unsigned_short_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
+      * Specialized *= function multiply rhs and *this.
+      * @param int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
       Any& operator*=(int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param unsigned int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( unsigned int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param unsigned int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(unsigned int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_unsigned_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param long int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( long int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param long int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(long int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_long_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_long_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param unsigned long int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( unsigned long int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param unsigned long int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(unsigned long int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_long_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_unsigned_long_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param long long int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( long long int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param long long int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(long long int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_long_long_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_long_long_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param unsigned long long int rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( unsigned long long int rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param unsigned long long int rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(unsigned long long int rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Integer_unsigned_long_long_int), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Integer_unsigned_long_long_int), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param float rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( float rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param float rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(float rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_float), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Floating_point_float), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param double rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( double rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param double rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(double rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_double), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Floating_point_double), rhs);
       }
 
       /**
-       * Specialized *= function multiply rhs and *this.
-       * @param long double rhs the value we are multiplying to *this
-       * @param *this * rhs.
-       */
-      Any& operator*=( long double rhs)
+      * Specialized *= function multiply rhs and *this.
+      * @param long double rhs the value we are multiplying to *this
+      * @param *this * rhs.
+      */
+      Any& operator*=(long double rhs)
       {
-        return MultiplyNumber(CalculateType(*this, ::myodd::dynamic::Floating_point_long_double), rhs);
+        return MultiplyNumber(CalculateType(*this, dynamic::Floating_point_long_double), rhs);
       }
-      
+
       /**
-       * Binary arithmetic operators - multiplication
-       * @param const Any& the item we are multiplying from this.
-       * @return Any *this*rhs
-       */
+      * Binary arithmetic operators - multiplication
+      * @param const Any& the item we are multiplying from this.
+      * @return Any *this*rhs
+      */
       Any operator*(const Any& rhs) const
       {
         // copy the value
@@ -785,23 +799,26 @@ namespace myodd {
       }
 
       /**
-       * Binary arithmetic operators - multiplication
-       * @param Any the item we are multiplying from this.
-       * @param const Any& the item we are multiplying from this.
-       * @return Any *this*rhs
-       */
+      * Binary arithmetic operators - multiplication
+      * @param Any the item we are multiplying from this.
+      * @param const Any& the item we are multiplying from this.
+      * @return Any *this*rhs
+      */
       template<class T> friend Any operator*(Any lhs, const T& rhs) { lhs *= rhs; return lhs; }
 
       //
       // *operators
       //
-      #pragma endregion *=operators
-      
+#ifdef _MSC_VER
+# pragma endregion *=operators
+#endif
+
       //
       // /operators
       //  
-      #pragma region
-
+#ifdef _MSC_VER
+# pragma region
+#endif
       /**
       * Binary arithmetic operators - division
       * @param const Any& the item we are deviding this by
@@ -810,7 +827,7 @@ namespace myodd {
       Any& operator/=(const Any& rhs)
       {
         // we use the double number as it is more precise
-        if ( rhs.Type() == ::myodd::dynamic::Misc_null)
+        if (rhs.Type() == dynamic::Misc_null)
         {
           // anything over null is the same as zero
           throw std::overflow_error("Division by zero.");
@@ -830,10 +847,10 @@ namespace myodd {
       }
 
       /**
-       * Default /= function divide *this by rhs.
-       * @param const T& rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
+      * Default /= function divide *this by rhs.
+      * @param const T& rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
       template<class T>
       Any& operator/=(T rhs)
       {
@@ -842,120 +859,120 @@ namespace myodd {
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param short int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( short int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param short int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(short int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_short_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_short_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param unsigned short int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( unsigned short int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param unsigned short int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(unsigned short int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_unsigned_short_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_unsigned_short_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
+      * Specialized /= function divide *this by rhs.
+      * @param int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
       Any& operator/=(int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param unsigned int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( unsigned int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param unsigned int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(unsigned int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_unsigned_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_unsigned_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param long int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( long int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param long int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(long int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_long_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_long_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param unsigned long int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( unsigned long int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param unsigned long int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(unsigned long int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_unsigned_long_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_unsigned_long_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param long long int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( long long int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param long long int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(long long int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_long_long_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_long_long_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param unsigned long long int rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( unsigned long long int rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param unsigned long long int rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(unsigned long long int rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Integer_unsigned_long_long_int), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Integer_unsigned_long_long_int), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param float rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( float rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param float rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(float rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Floating_point_float), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Floating_point_float), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param double rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( double rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param double rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(double rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Floating_point_double), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Floating_point_double), rhs);
       }
 
       /**
-       * Specialized /= function divide *this by rhs.
-       * @param long double rhs the value we are dividing *this with
-       * @param *this / rhs.
-       */
-      Any& operator/=( long double rhs)
+      * Specialized /= function divide *this by rhs.
+      * @param long double rhs the value we are dividing *this with
+      * @param *this / rhs.
+      */
+      Any& operator/=(long double rhs)
       {
-        return DivideNumber(CalculateDivideType(Type(), ::myodd::dynamic::Floating_point_long_double), rhs);
+        return DivideNumber(CalculateDivideType(Type(), dynamic::Floating_point_long_double), rhs);
       }
 
       /**
-       * Binary arithmetic operators - division
-       * @param const Any& the item we are deviding from this.
-       * @return Any *this/ rhs
-       */
+      * Binary arithmetic operators - division
+      * @param const Any& the item we are deviding from this.
+      * @return Any *this/ rhs
+      */
       Any operator/(const Any& rhs) const
       {
         // copy the value
@@ -969,39 +986,41 @@ namespace myodd {
       }
 
       /**
-       * Binary arithmetic operators - division
-       * @param Any the item we are dividing from this.
-       * @param const Any& the item we are dividing from this.
-       * @return Any *this / rhs
-       */
+      * Binary arithmetic operators - division
+      * @param Any the item we are dividing from this.
+      * @param const Any& the item we are dividing from this.
+      * @return Any *this / rhs
+      */
       template<class T> friend Any operator/(Any lhs, const T& rhs) { lhs /= Any(rhs); return lhs; }
-      
+
       //
       // /operators
       //
-      #pragma endregion /=operators
+#ifdef _MSC_VER
+# pragma endregion /=operators
+#endif
 
       /**
       * Return the data type
       * @return const Type& the data type.
       */
-      const ::myodd::dynamic::Type& Type() const
+      const dynamic::Type& Type() const
       {
         return _type;
       }
 
     protected:
       /**
-       * Regadless the data type, we try and guess that the number type could be.
-       * mainly used for string, so we can guess the string type.
-       * If this is a number we will return the number type, otherwse we will try and work it out.
-       * If we do not know we will return Integer_int
-       * @return ::myodd::dynamic::Type the string type.
-       */ 
-      ::myodd::dynamic::Type NumberType() const
+      * Regadless the data type, we try and guess that the number type could be.
+      * mainly used for string, so we can guess the string type.
+      * If this is a number we will return the number type, otherwse we will try and work it out.
+      * If we do not know we will return Integer_int
+      * @return dynamic::Type the string type.
+      */
+      dynamic::Type NumberType() const
       {
         //  if it is not a character then just use whatever we have
-        if (!::myodd::dynamic::is_type_character(Type()))
+        if (!dynamic::is_type_character(Type()))
         {
           return Type();
         }
@@ -1011,29 +1030,29 @@ namespace myodd {
         {
           // this is not a number, so zero will be used.
           // we might as well use an int.
-          return ::myodd::dynamic::Integer_int;
+          return dynamic::Integer_int;
         }
 
         // it seems to be a number, so we need to calculate what type of number it is.
         switch (_stringStatus)
         {
-        case ::myodd::dynamic::Any::StringStatus_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Partial_Pos_Number:
+        case dynamic::Any::StringStatus_Pos_Number:
+        case dynamic::Any::StringStatus_Partial_Pos_Number:
           if (_llivalue < 0)
           {
-            return ::myodd::dynamic::Integer_unsigned_long_long_int;
+            return dynamic::Integer_unsigned_long_long_int;
           }
-          return ::myodd::dynamic::Integer_long_long_int;
+          return dynamic::Integer_long_long_int;
 
-        case ::myodd::dynamic::Any::StringStatus_Neg_Number:
-        case ::myodd::dynamic::Any::StringStatus_Partial_Neg_Number:
-          return ::myodd::dynamic::Integer_long_long_int;
+        case dynamic::Any::StringStatus_Neg_Number:
+        case dynamic::Any::StringStatus_Partial_Neg_Number:
+          return dynamic::Integer_long_long_int;
 
-        case ::myodd::dynamic::Any::StringStatus_Floating_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Floating_Neg_Number:
-        case ::myodd::dynamic::Any::StringStatus_Floating_Partial_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Floating_Partial_Neg_Number:
-          return ::myodd::dynamic::Floating_point_long_double;
+        case dynamic::Any::StringStatus_Floating_Pos_Number:
+        case dynamic::Any::StringStatus_Floating_Neg_Number:
+        case dynamic::Any::StringStatus_Floating_Partial_Pos_Number:
+        case dynamic::Any::StringStatus_Floating_Partial_Neg_Number:
+          return dynamic::Floating_point_long_double;
 
         default:
           throw std::runtime_error("Unknown string type!");
@@ -1041,40 +1060,40 @@ namespace myodd {
       }
 
       /**
-       * Calculate the type for division
-       * @param const ::myodd::dynamic::Type& lhs the lhs type
-       * @param const ::myodd::dynamic::Type& rhs the rhs type
-       * @return ::myodd::dynamic::Type the best type for division
-       */
-      static ::myodd::dynamic::Type CalculateDivideType(const ::myodd::dynamic::Type& lhs, const ::myodd::dynamic::Type& rhs)
+      * Calculate the type for division
+      * @param const dynamic::Type& lhs the lhs type
+      * @param const dynamic::Type& rhs the rhs type
+      * @return dynamic::Type the best type for division
+      */
+      static dynamic::Type CalculateDivideType(const dynamic::Type& lhs, const dynamic::Type& rhs)
       {
-        if (lhs == ::myodd::dynamic::Floating_point_long_double || rhs == ::myodd::dynamic::Floating_point_long_double)
+        if (lhs == dynamic::Floating_point_long_double || rhs == dynamic::Floating_point_long_double)
         {
-          return ::myodd::dynamic::Floating_point_long_double;
-        }
-        
-        if (lhs == ::myodd::dynamic::Integer_long_long_int || rhs == ::myodd::dynamic::Integer_long_long_int)
-        {
-          return ::myodd::dynamic::Floating_point_long_double;
-        }
-        
-        if (lhs == ::myodd::dynamic::Integer_unsigned_long_long_int || rhs == ::myodd::dynamic::Integer_unsigned_long_long_int)
-        {
-          return ::myodd::dynamic::Floating_point_long_double;
+          return dynamic::Floating_point_long_double;
         }
 
-        else if (lhs == ::myodd::dynamic::Integer_long_int || rhs == ::myodd::dynamic::Integer_long_int)
+        if (lhs == dynamic::Integer_long_long_int || rhs == dynamic::Integer_long_long_int)
         {
-          return ::myodd::dynamic::Floating_point_long_double;
+          return dynamic::Floating_point_long_double;
         }
-        
-        if (lhs == ::myodd::dynamic::Integer_unsigned_long_int || rhs == ::myodd::dynamic::Integer_unsigned_long_int)
+
+        if (lhs == dynamic::Integer_unsigned_long_long_int || rhs == dynamic::Integer_unsigned_long_long_int)
         {
-          return ::myodd::dynamic::Floating_point_long_double;
+          return dynamic::Floating_point_long_double;
+        }
+
+        else if (lhs == dynamic::Integer_long_int || rhs == dynamic::Integer_long_int)
+        {
+          return dynamic::Floating_point_long_double;
+        }
+
+        if (lhs == dynamic::Integer_unsigned_long_int || rhs == dynamic::Integer_unsigned_long_int)
+        {
+          return dynamic::Floating_point_long_double;
         }
 
         // default value.
-        return ::myodd::dynamic::Floating_point_double;
+        return dynamic::Floating_point_double;
       }
 
       /**
@@ -1084,10 +1103,10 @@ namespace myodd {
       * NB: this function does not _set_ the type, it only calculates the posible value.
       *     it is up to the call function to set the new type.
       * @param const Any& lhs the original number on the lhs of the operation
-      * @param const ::myodd::dynamic::Type& rhsOriginal the original type on the rhs of the operation
-      * @return ::myodd::dynamic::Type the posible new type.
+      * @param const dynamic::Type& rhsOriginal the original type on the rhs of the operation
+      * @return dynamic::Type the posible new type.
       */
-      static ::myodd::dynamic::Type CalculateType(const Any& lhs, const Any& rhs)
+      static dynamic::Type CalculateType(const Any& lhs, const Any& rhs)
       {
         auto lhsOriginal = lhs.NumberType();
         auto rhsOriginal = rhs.NumberType();
@@ -1095,122 +1114,122 @@ namespace myodd {
       }
 
       /**
-       * This function is used to re-calculate the 'best' type after an arithmetic opereation 
-       * For example int*int could give us a long long
-       *          or int / int could give us a double.
-       * NB: this function does not _set_ the type, it only calculates the posible value.
-       *     it is up to the call function to set the new type.
-       * @param const Any& lhs the original number on the lhs of the operation
-       * @param const ::myodd::dynamic::Type& rhsOriginal the original type on the rhs of the operation
-       * @return ::myodd::dynamic::Type the posible new type.
-       */
-      static ::myodd::dynamic::Type CalculateType(const Any& lhs, const ::myodd::dynamic::Type& rhsOriginal)
+      * This function is used to re-calculate the 'best' type after an arithmetic opereation
+      * For example int*int could give us a long long
+      *          or int / int could give us a double.
+      * NB: this function does not _set_ the type, it only calculates the posible value.
+      *     it is up to the call function to set the new type.
+      * @param const Any& lhs the original number on the lhs of the operation
+      * @param const dynamic::Type& rhsOriginal the original type on the rhs of the operation
+      * @return dynamic::Type the posible new type.
+      */
+      static dynamic::Type CalculateType(const Any& lhs, const dynamic::Type& rhsOriginal)
       {
         return CalculateType(lhs.NumberType(), rhsOriginal);
       }
 
       /**
-       * This function is used to re-calculate the 'best' type after an arithmetic opereation 
-       * For example int*int could give us a long long
-       *          or int / int could give us a double.
-       * NB: this function does not _set_ the type, it only calculates the posible value.
-       *     it is up to the call function to set the new type.
-       * @param const ::myodd::dynamic::Type& lhsOriginal the original type on the lhs of the operation
-       * @param const ::myodd::dynamic::Type& rhsOriginal the original type on the rhs of the operation
-       * @return ::myodd::dynamic::Type the posible new type.
-       */
-      static ::myodd::dynamic::Type CalculateType(const ::myodd::dynamic::Type& lhsOriginal, const ::myodd::dynamic::Type& rhsOriginal)
+      * This function is used to re-calculate the 'best' type after an arithmetic opereation
+      * For example int*int could give us a long long
+      *          or int / int could give us a double.
+      * NB: this function does not _set_ the type, it only calculates the posible value.
+      *     it is up to the call function to set the new type.
+      * @param const dynamic::Type& lhsOriginal the original type on the lhs of the operation
+      * @param const dynamic::Type& rhsOriginal the original type on the rhs of the operation
+      * @return dynamic::Type the posible new type.
+      */
+      static dynamic::Type CalculateType(const dynamic::Type& lhsOriginal, const dynamic::Type& rhsOriginal)
       {
         //  null values become ints.
         if (is_Misc_null(lhsOriginal))
         {
-          return CalculateType(::myodd::dynamic::Integer_int, rhsOriginal);
+          return CalculateType(dynamic::Integer_int, rhsOriginal);
         }
 
         if (is_Misc_null(rhsOriginal))
         {
-          return CalculateType(lhsOriginal, ::myodd::dynamic::Integer_int);
+          return CalculateType(lhsOriginal, dynamic::Integer_int);
         }
 
         //  char values become ints.
         if (is_type_character(lhsOriginal))
         {
-          return CalculateType(::myodd::dynamic::Integer_int, rhsOriginal);
+          return CalculateType(dynamic::Integer_int, rhsOriginal);
         }
 
         if (is_type_character(rhsOriginal))
         {
-          return CalculateType(lhsOriginal, ::myodd::dynamic::Integer_int);
+          return CalculateType(lhsOriginal, dynamic::Integer_int);
         }
 
         //  booleans values become ints.
         if (is_type_boolean(lhsOriginal))
         {
-          return CalculateType(::myodd::dynamic::Integer_int, rhsOriginal);
+          return CalculateType(dynamic::Integer_int, rhsOriginal);
         }
 
         if (is_type_boolean(rhsOriginal))
         {
-          return CalculateType(lhsOriginal, ::myodd::dynamic::Integer_int);
+          return CalculateType(lhsOriginal, dynamic::Integer_int);
         }
 
         //  the possible type
-        ::myodd::dynamic::Type type = lhsOriginal;
+        dynamic::Type type = lhsOriginal;
 
         // first we check for floating points.
         //
         // if either is long double, they both long double.
-        if (lhsOriginal == ::myodd::dynamic::Floating_point_long_double || rhsOriginal == ::myodd::dynamic::Floating_point_long_double)
+        if (lhsOriginal == dynamic::Floating_point_long_double || rhsOriginal == dynamic::Floating_point_long_double)
         {
-          type = ::myodd::dynamic::Floating_point_long_double;
+          type = dynamic::Floating_point_long_double;
         }
         // if either is a double
-        else if (lhsOriginal == ::myodd::dynamic::Floating_point_double || rhsOriginal == ::myodd::dynamic::Floating_point_double)
+        else if (lhsOriginal == dynamic::Floating_point_double || rhsOriginal == dynamic::Floating_point_double)
         {
-          type = ::myodd::dynamic::Floating_point_double;
+          type = dynamic::Floating_point_double;
         }
         // if either is a float
-        else if (lhsOriginal == ::myodd::dynamic::Floating_point_float || rhsOriginal == ::myodd::dynamic::Floating_point_float)
+        else if (lhsOriginal == dynamic::Floating_point_float || rhsOriginal == dynamic::Floating_point_float)
         {
-          type = ::myodd::dynamic::Floating_point_float;
+          type = dynamic::Floating_point_float;
         }
         // if either is an unsigned long long int
-        else if (lhsOriginal == ::myodd::dynamic::Integer_unsigned_long_long_int || rhsOriginal == ::myodd::dynamic::Integer_unsigned_long_long_int )
+        else if (lhsOriginal == dynamic::Integer_unsigned_long_long_int || rhsOriginal == dynamic::Integer_unsigned_long_long_int)
         {
-          type = ::myodd::dynamic::Integer_unsigned_long_long_int;
+          type = dynamic::Integer_unsigned_long_long_int;
         }
         // if either is an long long int
-        else if (lhsOriginal == ::myodd::dynamic::Integer_long_long_int || rhsOriginal == ::myodd::dynamic::Integer_long_long_int)
+        else if (lhsOriginal == dynamic::Integer_long_long_int || rhsOriginal == dynamic::Integer_long_long_int)
         {
-          type = ::myodd::dynamic::Integer_long_long_int;
+          type = dynamic::Integer_long_long_int;
         }
-        else if (lhsOriginal == ::myodd::dynamic::Integer_unsigned_long_int || rhsOriginal == ::myodd::dynamic::Integer_unsigned_long_int)
+        else if (lhsOriginal == dynamic::Integer_unsigned_long_int || rhsOriginal == dynamic::Integer_unsigned_long_int)
         {
-          type = ::myodd::dynamic::Integer_unsigned_long_int;
+          type = dynamic::Integer_unsigned_long_int;
         }
         // if either is an long and other is unsigned int
-        else if ((lhsOriginal == ::myodd::dynamic::Integer_long_int && rhsOriginal == ::myodd::dynamic::Integer_unsigned_int)
-                 ||
-                 (rhsOriginal == ::myodd::dynamic::Integer_long_int && lhsOriginal == ::myodd::dynamic::Integer_unsigned_int)
-                )
+        else if ((lhsOriginal == dynamic::Integer_long_int && rhsOriginal == dynamic::Integer_unsigned_int)
+          ||
+          (rhsOriginal == dynamic::Integer_long_int && lhsOriginal == dynamic::Integer_unsigned_int)
+          )
         {
-          type = ::myodd::dynamic::Integer_unsigned_long_int;
+          type = dynamic::Integer_unsigned_long_int;
         }
         // if either is long
-        else if (lhsOriginal == ::myodd::dynamic::Integer_long_int ||
-                 rhsOriginal == ::myodd::dynamic::Integer_long_int)
+        else if (lhsOriginal == dynamic::Integer_long_int ||
+          rhsOriginal == dynamic::Integer_long_int)
         {
-          type = ::myodd::dynamic::Integer_long_int;
+          type = dynamic::Integer_long_int;
         }
         // if either is unsigned int
-        else if (lhsOriginal == ::myodd::dynamic::Integer_unsigned_int ||
-                 rhsOriginal == ::myodd::dynamic::Integer_unsigned_int)
+        else if (lhsOriginal == dynamic::Integer_unsigned_int ||
+          rhsOriginal == dynamic::Integer_unsigned_int)
         {
-          type = ::myodd::dynamic::Integer_unsigned_int;
+          type = dynamic::Integer_unsigned_int;
         }
         else
         {
-          type = ::myodd::dynamic::Integer_int;
+          type = dynamic::Integer_int;
         }
 
         // if we are here, they are both the same type, (floating/integer)
@@ -1219,36 +1238,60 @@ namespace myodd {
       }
 
       /**
-       * Compare 2 values and return 0 if they are both the same.
-       * @param const Any& lhs the lhs value been compared.
-       * @param const Any& rhs the lhs value been compared.
-       * @return short, 0 if equal, -1 if type not the same, >=1 if value not same.
-       */
+      * Compare 2 values and return 0 if they are both the same.
+      * @param const Any& lhs the lhs value been compared.
+      * @param const Any& rhs the lhs value been compared.
+      * @return short, 0 if equal, -1 if type not the same, >=1 if value not same.
+      */
       static short Compare(const Any& lhs, const Any& rhs)
       {
         // special case for null
         switch (lhs.Type())
         {
-        case ::myodd::dynamic::Misc_unknown:
-        case ::myodd::dynamic::Misc_null:
+        case dynamic::Misc_unknown:
+        case dynamic::Misc_null:
           // both are the same, (as per above), so if both null then they are the same.
           // all the values should be the same but there is no point in checking.
           return 0;
+
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+        case dynamic::Boolean_bool:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_char:
+        case dynamic::Character_wchar_t:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_long_double:
+          break;
+
+        default:
+          // unknown
+          throw std::runtime_error("Unknown data Type");
         }
 
         // are we comparing trivial structures
-        if (lhs.IsTrivial() || rhs.IsTrivial() )
+        if (lhs.IsTrivial() || rhs.IsTrivial())
         {
-          return CompareTrivial( lhs, rhs);
+          return CompareTrivial(lhs, rhs);
         }
-        
+
         //  find the 'common' type
         // in the case of 2 characters we could end up comparing 2xzeros
         // but it is fine as we will compare them further later.
         auto type = CalculateType(lhs, rhs);
-        switch ( type )
+        switch (type)
         {
-        // bool
+          // bool
         case Boolean_bool:
           //  should both be == 1
           if (lhs._llivalue != rhs._llivalue)
@@ -1257,14 +1300,14 @@ namespace myodd {
           }
           break;
 
-        // character
+          // character
         case Character_signed_char:
         case Character_unsigned_char:
         case Character_char:
         case Character_wchar_t:
           break;
 
-        // Integer
+          // Integer
         case Integer_short_int:
         case Integer_unsigned_short_int:
           if ((short int)lhs._llivalue != (short int)rhs._llivalue)
@@ -1297,7 +1340,7 @@ namespace myodd {
           }
           break;
 
-        // Floating point
+          // Floating point
         case Floating_point_float:
           if ((float)lhs._ldvalue != (float)rhs._ldvalue)
           {
@@ -1324,8 +1367,8 @@ namespace myodd {
         }
 
         //  if they are both characters then we need to test further.
-        if (::myodd::dynamic::is_type_character(lhs.Type()) && ::myodd::dynamic::is_type_character(rhs.Type()) &&
-           (!lhs.IsStringNumber( false ) || !rhs.IsStringNumber(false) ))
+        if (dynamic::is_type_character(lhs.Type()) && dynamic::is_type_character(rhs.Type()) &&
+          (!lhs.IsStringNumber(false) || !rhs.IsStringNumber(false)))
         {
           //  null/not null
           if (lhs._cvalue && !rhs._cvalue)
@@ -1354,10 +1397,10 @@ namespace myodd {
       }
 
       /**
-       * Compare one or more trivial cases.
-       * @throw if we are unable to compare, (not same types, not same sizes etc...)
-       * @return short 0 if they are the same or -1 if not.
-       */
+      * Compare one or more trivial cases.
+      * @throw if we are unable to compare, (not same types, not same sizes etc...)
+      * @return short 0 if they are the same or -1 if not.
+      */
       static short CompareTrivial(const Any& lhs, const Any& rhs)
       {
         // are they both trivial?
@@ -1377,30 +1420,33 @@ namespace myodd {
         return (std::memcmp(lhs._tvalue, rhs._tvalue, lhs._ltvalue) != 0 ? -1 : 0);
       }
 
+#ifdef _MSC_VER
+# pragma region
+#endif
       /**
-       * Try and create from a given value.
-       * @throw std::bad_cast() if we are trying to create from an unknwon value.
-       * @param const T& value the value we are trying to create from.
-       */
+      * Try and create from a given value.
+      * @throw std::bad_cast() if we are trying to create from an unknwon value.
+      * @param const T& value the value we are trying to create from.
+      */
       template<class T>
-      void CastFrom(const T& value)
+      void CreateFrom(const T& value)
       {
         // clear all the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<T>::value;
-        switch ( Type() )
+        _type = dynamic::get_type<T>::value;
+        switch (Type())
         {
-        case ::myodd::dynamic::Misc_null:
+        case dynamic::Misc_null:
           _llivalue = 0;
           _ldvalue = 0;
           return;
 
-        case ::myodd::dynamic::Misc_unknown:
+        case dynamic::Misc_unknown:
           // Objects of trivially - copyable types are the only C++ objects that 
           // may be safely copied with std::memcpy
-          CreateFromTrivial( value );
+          CreateFromTrivial(value);
 
           // done
           return;
@@ -1415,21 +1461,21 @@ namespace myodd {
       }
 
       /**
-       * Try and create from a given value.
-       * @throw std::bad_cast() if we are trying to create from an unknwon value.
-       * @param const T& value the value we are trying to create from.
-       */
+      * Try and create from a given value.
+      * @throw std::bad_cast() if we are trying to create from an unknwon value.
+      * @param const T& value the value we are trying to create from.
+      */
       template<class T>
-      void CastFrom(T* value)
+      void CreateFrom(T* value)
       {
         // clear all the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<T>::value;
+        _type = dynamic::get_type<T>::value;
 
         // if unknown try and set is as a pointer.
-        if (_type == ::myodd::dynamic::Misc_unknown)
+        if (_type == dynamic::Misc_unknown)
         {
           CreateFromTrivial<T*>(value);
           return;
@@ -1438,40 +1484,40 @@ namespace myodd {
         // if not null then we can set it.
         if (nullptr != value)
         {
-          CastFrom(*value);
+          CreateFrom(*value);
         }
         else
         {
           // if it is null we must still set the type, but default the values to zeros.
-          switch ( Type() )
+          switch (Type())
           {
-          case ::myodd::dynamic::Misc_null:
+          case dynamic::Misc_null:
             _llivalue = 0;
             _ldvalue = 0;
             return;
 
-          // boolean
-          case ::myodd::dynamic::Boolean_bool:
+            // boolean
+          case dynamic::Boolean_bool:
 
-          // int
-          case ::myodd::dynamic::Integer_short_int:
-          case ::myodd::dynamic::Integer_unsigned_short_int:
-          case ::myodd::dynamic::Integer_int:
-          case ::myodd::dynamic::Integer_unsigned_int:
-          case ::myodd::dynamic::Integer_long_int:
-          case ::myodd::dynamic::Integer_unsigned_long_int:
-          case ::myodd::dynamic::Integer_long_long_int:
-          case ::myodd::dynamic::Integer_unsigned_long_long_int:
+            // int
+          case dynamic::Integer_short_int:
+          case dynamic::Integer_unsigned_short_int:
+          case dynamic::Integer_int:
+          case dynamic::Integer_unsigned_int:
+          case dynamic::Integer_long_int:
+          case dynamic::Integer_unsigned_long_int:
+          case dynamic::Integer_long_long_int:
+          case dynamic::Integer_unsigned_long_long_int:
 
-          // floating points.
-          case ::myodd::dynamic::Floating_point_double:
-          case ::myodd::dynamic::Floating_point_float:
-          case ::myodd::dynamic::Floating_point_long_double:
+            // floating points.
+          case dynamic::Floating_point_double:
+          case dynamic::Floating_point_float:
+          case dynamic::Floating_point_long_double:
             _llivalue = 0;
             _ldvalue = 0;
             return;
 
-          case ::myodd::dynamic::Misc_unknown:
+          case dynamic::Misc_unknown:
             break;
 
           default:
@@ -1485,16 +1531,16 @@ namespace myodd {
       }
 
       /**
-       * Create from a boolean value.
-       * @param const bool& value the bool value.
-       */
-      void CastFrom(const bool& value)
+      * Create from a boolean value.
+      * @param const bool& value the bool value.
+      */
+      void CreateFrom(const bool& value)
       {
         // clear all the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<bool>::value;
+        _type = dynamic::get_type<bool>::value;
 
         // set the values
         _llivalue = (value ? 1 : 0);
@@ -1502,172 +1548,172 @@ namespace myodd {
       }
 
       /**
-       * Create from a float value.
-       * @param const float& value the number value.
-       */
-      void CastFrom(const float& value)
+      * Create from a float value.
+      * @param const float& value the number value.
+      */
+      void CreateFrom(const float& value)
       {
         CreateFromDouble(value);
       }
 
       /**
-       * Create from a double value.
-       * @param const double& value the number value.
-       */
-      void CastFrom(const double& value)
+      * Create from a double value.
+      * @param const double& value the number value.
+      */
+      void CreateFrom(const double& value)
       {
         CreateFromDouble(value);
       }
 
       /**
-       * Create from a long double value.
-       * @param const long double& value the number value.
-       */
-      void CastFrom(const long double& value)
+      * Create from a long double value.
+      * @param const long double& value the number value.
+      */
+      void CreateFrom(const long double& value)
       {
         CreateFromDouble(value);
       }
 
       /**
-       * Create from a short int value.
-       * @param const short int& value the number value.
-       */
-      void CastFrom(const short int& value)
+      * Create from a short int value.
+      * @param const short int& value the number value.
+      */
+      void CreateFrom(const short int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from an unsigned short int value.
-       * @param const unsigned short int& value the number value.
-       */
-      void CastFrom(const unsigned short int& value)
+      * Create from an unsigned short int value.
+      * @param const unsigned short int& value the number value.
+      */
+      void CreateFrom(const unsigned short int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from an int value.
-       * @param const int& value the number value.
-       */
-      void CastFrom(const int& value)
+      * Create from an int value.
+      * @param const int& value the number value.
+      */
+      void CreateFrom(const int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from an unsigned int value.
-       * @param const unsigned int& value the number value.
-       */
-      void CastFrom(const unsigned int& value)
+      * Create from an unsigned int value.
+      * @param const unsigned int& value the number value.
+      */
+      void CreateFrom(const unsigned int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from a long int value.
-       * @param const long int& value the number value.
-       */
-      void CastFrom(const long int& value)
+      * Create from a long int value.
+      * @param const long int& value the number value.
+      */
+      void CreateFrom(const long int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from a unsigned long int value.
-       * @param const unsigned long int& value the number value.
-       */
-      void CastFrom(const unsigned long int& value)
+      * Create from a unsigned long int value.
+      * @param const unsigned long int& value the number value.
+      */
+      void CreateFrom(const unsigned long int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from a long long int value.
-       * @param const long long int& value the number value.
-       */
-      void CastFrom(const long long int& value)
+      * Create from a long long int value.
+      * @param const long long int& value the number value.
+      */
+      void CreateFrom(const long long int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from a unsigned long int value.
-       * @param const unsigned long long int& value the number value.
-       */
-      void CastFrom(const unsigned long long int& value)
+      * Create from a unsigned long int value.
+      * @param const unsigned long long int& value the number value.
+      */
+      void CreateFrom(const unsigned long long int& value)
       {
         CreateFromInteger(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param char* value the value we are trying to create from.
-       */
-      void CastFrom(char* value)
+      * Create from a character pointer.
+      * @param char* value the value we are trying to create from.
+      */
+      void CreateFrom(char* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param char* value the value we are trying to create from.
-       */
-      void CastFrom(const char* value)
+      * Create from a character pointer.
+      * @param char* value the value we are trying to create from.
+      */
+      void CreateFrom(const char* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param signed char* value the value we are trying to create from.
-       */
-      void CastFrom(signed char* value)
+      * Create from a character pointer.
+      * @param signed char* value the value we are trying to create from.
+      */
+      void CreateFrom(signed char* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param signed char* value the value we are trying to create from.
-       */
-      void CastFrom(const signed char* value)
+      * Create from a character pointer.
+      * @param signed char* value the value we are trying to create from.
+      */
+      void CreateFrom(const signed char* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param unsigned char* value the value we are trying to create from.
-       */
-      void CastFrom(unsigned char* value)
+      * Create from a character pointer.
+      * @param unsigned char* value the value we are trying to create from.
+      */
+      void CreateFrom(unsigned char* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param unsigned char* value the value we are trying to create from.
-       */
-      void CastFrom(const unsigned char* value)
+      * Create from a character pointer.
+      * @param unsigned char* value the value we are trying to create from.
+      */
+      void CreateFrom(const unsigned char* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param wchar_t* value the value we are trying to create from.
-       */
-      void CastFrom(wchar_t* value)
+      * Create from a character pointer.
+      * @param wchar_t* value the value we are trying to create from.
+      */
+      void CreateFrom(wchar_t* value)
       {
         CreateFromCharacters(value);
       }
 
       /**
-       * Create from a character pointer.
-       * @param wchar_t* value the value we are trying to create from.
-       */
-      void CastFrom(const wchar_t* value)
+      * Create from a character pointer.
+      * @param wchar_t* value the value we are trying to create from.
+      */
+      void CreateFrom(const wchar_t* value)
       {
         CreateFromCharacters(value);
       }
@@ -1677,107 +1723,107 @@ namespace myodd {
       * @throw std::bad_cast() if we are trying to create from an unknwon value.
       * @param const T& value the value we are trying to create from.
       */
-      void CastFrom(nullptr_t)
+      void CreateFrom(nullptr_t)
       {
         // clear all the values.
         CleanValues();
       }
 
       /**
-       * Create from a given value.
-       * @param const char& value the value we are trying to create from.
-       */
-      void CastFrom(const char& value)
+      * Create from a given value.
+      * @param const char& value the value we are trying to create from.
+      */
+      void CreateFrom(const char& value)
       {
         CreateFromCharacter(value);
       }
 
       /**
-       * Create from a given value.
-       * @param const signed char& value the value we are trying to create from.
-       */
-      void CastFrom(const signed char& value)
+      * Create from a given value.
+      * @param const signed char& value the value we are trying to create from.
+      */
+      void CreateFrom(const signed char& value)
       {
         CreateFromCharacter(value);
       }
 
       /**
-       * Create from a given value.
-       * @param const unsigned char& value the value we are trying to create from.
-       */
-      void CastFrom(const unsigned char& value)
+      * Create from a given value.
+      * @param const unsigned char& value the value we are trying to create from.
+      */
+      void CreateFrom(const unsigned char& value)
       {
         CreateFromCharacter(value);
       }
 
       /**
-       * Create from a given value.
-       * @param const wchar_t& value the value we are trying to create from.
-       */
-      void CastFrom(const wchar_t& value)
+      * Create from a given value.
+      * @param const wchar_t& value the value we are trying to create from.
+      */
+      void CreateFrom(const wchar_t& value)
       {
         CreateFromCharacter(value);
       }
-      
+
       /**
-       * Create from a const std::string.
-       * @param std::string& value the value we are trying to create from.
-       */
-      void CastFrom(std::string& value)
+      * Create from a const std::string.
+      * @param std::string& value the value we are trying to create from.
+      */
+      void CreateFrom(std::string& value)
       {
         CreateFromCharacters(value.c_str());
       }
 
       /**
-       * Create from a const std::string*.
-       * @param std::string* value the value we are trying to create from.
-       */
-      void CastFrom(std::string* value)
+      * Create from a const std::string*.
+      * @param std::string* value the value we are trying to create from.
+      */
+      void CreateFrom(std::string* value)
       {
         CreateFromCharacters(value ? value->c_str() : (const char*)nullptr);
       }
 
       /**
-       * Create from a const std::string*.
-       * @param const std::string* value the value we are trying to create from.
-       */
-      void CastFrom( const std::string* value)
+      * Create from a const std::string*.
+      * @param const std::string* value the value we are trying to create from.
+      */
+      void CreateFrom(const std::string* value)
       {
         CreateFromCharacters(value ? value->c_str() : (const char*)nullptr);
       }
 
       /**
-       * Create from a std::wstring.
-       * @param std::wstring& value the value we are trying to create from.
-       */
-      void CastFrom(std::wstring& value)
+      * Create from a std::wstring.
+      * @param std::wstring& value the value we are trying to create from.
+      */
+      void CreateFrom(std::wstring& value)
       {
         CreateFromCharacters(value.c_str());
       }
 
       /**
-       * Create from a const std::wstring*.
-       * @param std::wstring* value the value we are trying to create from.
-       */
-      void CastFrom(std::wstring* value)
+      * Create from a const std::wstring*.
+      * @param std::wstring* value the value we are trying to create from.
+      */
+      void CreateFrom(std::wstring* value)
       {
         CreateFromCharacters(value ? value->c_str() : (wchar_t*)nullptr);
       }
 
       /**
-       * Create from a const std::wstring*.
-       * @param const std::wstring* value the value we are trying to create from.
-       */
-      void CastFrom( const std::wstring* value)
+      * Create from a const std::wstring*.
+      * @param const std::wstring* value the value we are trying to create from.
+      */
+      void CreateFrom(const std::wstring* value)
       {
         CreateFromCharacters(value ? value->c_str() : (wchar_t*)nullptr);
       }
 
       /**
-       * Create from a const std::string.
-       * @param const std::string& value the value we are trying to create from.
-       */
-      void CastFrom(const std::string& value)
+      * Create from a const std::string.
+      * @param const std::string& value the value we are trying to create from.
+      */
+      void CreateFrom(const std::string& value)
       {
         CreateFromCharacters(value.c_str());
       }
@@ -1786,728 +1832,15 @@ namespace myodd {
       * Create from a const std::wstring.
       * @param const std::wstring& value the value we are trying to create from.
       */
-      void CastFrom(const std::wstring& value)
+      void CreateFrom(const std::wstring& value)
       {
         CreateFromCharacters(value.c_str());
       }
 
       /**
-       * Try and cast this to a posible value.
-       * @return T the value we are looking for.
-       */
-      template<class T>
-      void CastTo( T& value ) const
-      {
-        switch ( Type() )
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          CastToTrivial( value );
-          break;
-
-        // none of the fundamental types are handled here.
-        // each has its own function
-        default:        
-          // we cannot cast this.
-          throw std::bad_cast();
-        }
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return short int the value.
-       */
-      void CastTo( float& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return double the value.
-       */
-      void CastTo( double& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return long double the value.
-       */
-      void CastTo( long double& value ) const
-      {
-        CastToFundamental(value);
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return short int the value.
-       */
-      void CastTo( short int& value) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return unsigned short int the value.
-       */
-      void CastTo( unsigned short int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return int the value.
-       */
-      void CastTo( int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return unsigned int the value.
-       */
-      void CastTo( unsigned int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return long the value.
-       */
-      void CastTo( long int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return unsigned long the value.
-       */
-      void CastTo( unsigned long int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return long long the value.
-       */
-      void CastTo( long long int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return unsigned long long the value.
-       */
-      void CastTo( unsigned long long int& value ) const
-      {
-        CastToFundamental( value );
-      }
-
-      /**
-       * Try and cast this to a posible value.
-       * @return char* the value we are looking for.
-       */
-      void CastTo( char*& value) const
-      {
-        ReturnFromCharacters( value );
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @param const char* value the value we are looking for.
+      * Create a value from a double/float/long double number..
+      * @param const T* number the number we are creating from.
       */
-      void CastTo( const char*& value) const
-      {
-        char* c = nullptr;
-        ReturnFromCharacters(c);
-        value = c;
-      }
-
-      /**
-       * Try and cast this to a posible value.
-       * @return wchar_t* the value we are looking for.
-       */
-      void CastTo( wchar_t*& value ) const
-      {
-        ReturnFromCharacters( value );
-      }
-
-      /**
-       * Try and cast this to a posible value.
-       * @param wchar_t* value the value we are looking for.
-       */
-      void CastTo( const wchar_t*& value) const
-      {
-        wchar_t* wc = nullptr;
-        ReturnFromCharacters(wc);
-        value = wc;
-      }
-
-
-      /**
-       * Try and cast this to a posible value.
-       * @return wchar_t* the value we are looking for.
-       */
-      void CastTo( std::wstring& value ) const
-      {
-        ReturnFromCharacters( value );
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @return char the value we are looking for.
-      */
-      void CastTo( char& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case ::myodd::dynamic::Character_wchar_t:
-          value = static_cast<char>(*(wchar_t*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_char:
-          value = static_cast<char>(*(char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_signed_char:
-          value = static_cast<char>(*(signed char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_unsigned_char:
-          value = static_cast<char>(*(unsigned char*)_cvalue);
-          break;
-
-        default:
-          value = static_cast<char>(_llivalue);
-          break;
-        }
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @return wchar_t the value we are looking for.
-      */
-      void CastTo( wchar_t& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case ::myodd::dynamic::Character_wchar_t:
-          value = static_cast<wchar_t>(*(wchar_t*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_char:
-          value = static_cast<wchar_t>(*(char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_signed_char:
-          value = static_cast<wchar_t>(*(signed char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_unsigned_char:
-          value = static_cast<wchar_t>(*(unsigned char*)_cvalue);
-          break;
-
-        default:
-          value = static_cast<wchar_t>(_llivalue);
-          break;
-        }
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @return unsigned char the value we are looking for.
-      */
-      void CastTo( unsigned char& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case ::myodd::dynamic::Character_wchar_t:
-          value = static_cast<unsigned char>(*(wchar_t*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_char:
-          value = static_cast<unsigned char>(*(char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_signed_char:
-          value = static_cast<unsigned char>(*(signed char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_unsigned_char:
-          value = static_cast<unsigned char>(*(unsigned char*)_cvalue);
-          break;
-
-        default:
-          value = static_cast<unsigned char>(_llivalue);
-          break;
-        }
-      }
-
-      /**
-       * Try and cast this to a posible value.
-       * @return unsigned char the value we are looking for.
-       */
-      void CastTo( signed char& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case ::myodd::dynamic::Character_wchar_t:
-          value = static_cast<signed char>(*(wchar_t*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_char:
-          value = static_cast<signed char>(*(char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_signed_char:
-          value = static_cast<signed char>(*(signed char*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_unsigned_char:
-          value = static_cast<signed char>(*(unsigned char*)_cvalue);
-          break;
-
-        default:
-          value = static_cast<signed char>(_llivalue);
-          break;
-        }
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * we have a specialised function as casting to bool can be inefficent.
-      * @return bool the value we are looking for.
-      */
-      void CastTo( bool& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          // null is false/
-          value = false;
-          return;
-        }
-
-        // if we are a float we must use it, in case we have 0.0001
-        // if we were using the long long int then we would only have 0
-        if (::myodd::dynamic::is_type_floating(NumberType()))
-        {
-          value = (_ldvalue != 0);
-        }
-        else
-        {
-          // but we use the int if we are told to
-          // in case the long double is not valid.
-          value = (_llivalue != 0);
-        }
-      }
-
-      /**
-      * Cast this to a fundamental type
-      * @return short int the value.
-      */
-      template<class T>
-      std::enable_if_t<!std::is_pointer<T>::value> CastToTrivial( T& value ) const
-      {
-        // as it is not a pointer, it has to be trivially copyable.
-        if (!std::is_trivially_copyable<T>::value)
-        {
-          // we cannot convert this T to a trivial type.
-          throw std::bad_cast();
-        }
-
-        // As we are looking for the non pointer value we can 
-        // only return the non pointer version of the trivial
-        // we cannot cast our pointer into whatever decltype(T) was passed to us.
-        if (Type() != ::myodd::dynamic::Misc_trivial)
-        {
-          // we cannot convert this to a trivial type.
-          throw std::bad_cast();
-        }
-
-        // can we fit our data exactly inside the structure that they are trying to make us use.
-        if (sizeof(T) != _ltvalue)
-        {
-          throw std::bad_cast();
-        }
-
-        // copy the trival value.
-        std::memcpy(&value, _tvalue, _ltvalue);
-      }
-
-      /**
-       * Cast this to a fundamental type
-       * @return short int the value.
-       */
-      template<class T>
-      std::enable_if_t<std::is_pointer<T>::value> CastToTrivial( T& value ) const
-      {
-        if (!IsTrivial())
-        {
-          // we cannot convert this to a trivial type.
-          throw std::bad_cast();
-        }
-
-        // we konw, that we handle certain pointers, (strings, ints etc)
-        // so there is no way that we can cast a trivial value to something
-        // we know it cannot be, only unknown types are 'trivial'
-        if(::myodd::dynamic::Misc_unknown != ::myodd::dynamic::get_type<std::remove_pointer<T>>::value )
-        {
-          // we cannot cast to this T* as we know
-          // that it was not what it was created with, (as we handle known pointers).
-          throw std::bad_cast();
-        }
-
-        // are _we_ a non pointer trivial?
-        // in that case we can return our address.
-        // the user should not be allowed to delete
-        //  it as they did not create this value.
-        if (::myodd::dynamic::Misc_trivial == Type())
-        {
-          value = (T)_tvalue;
-        }
-        else
-        {
-          // we are a pointer value so we can return it.
-          value = (T)_ptvalue;
-        }
-      }
-
-      /**
-      * Do common casting to known fundamental type.
-      * T the 'fundamental' cast
-      */
-      template<class T>
-      std::enable_if_t<!std::is_pointer<T>::value> CastToFundamental( T& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = 0;
-          break;
-
-          // char
-        case ::myodd::dynamic::Character_char:
-        case ::myodd::dynamic::Character_unsigned_char:
-        case ::myodd::dynamic::Character_signed_char:
-        case ::myodd::dynamic::Character_wchar_t:
-          if (::myodd::dynamic::is_type_floating(NumberType()))
-          {
-            value = static_cast<T>(_ldvalue);
-          }
-          else
-          {
-            value = static_cast<T>(_llivalue);
-          }
-          break;
-
-          // Integer
-        case ::myodd::dynamic::Integer_unsigned_int:
-        case ::myodd::dynamic::Integer_int:
-        case ::myodd::dynamic::Integer_short_int:
-        case ::myodd::dynamic::Integer_unsigned_short_int:
-        case ::myodd::dynamic::Integer_long_int:
-        case ::myodd::dynamic::Integer_unsigned_long_int:
-        case ::myodd::dynamic::Integer_long_long_int:
-        case ::myodd::dynamic::Integer_unsigned_long_long_int:
-          value = static_cast<T>(_llivalue);
-          break;
-
-        case ::myodd::dynamic::Floating_point_double:
-        case ::myodd::dynamic::Floating_point_float:
-        case ::myodd::dynamic::Floating_point_long_double:
-          value = static_cast<T>(_ldvalue);
-          break;
-
-        case ::myodd::dynamic::Boolean_bool:
-          value = static_cast<T>(_ldvalue);
-          break;
-
-        default:
-          // we cannot cast this.
-          throw std::bad_cast();
-        }
-      }
-
-      /**
-       * Return a character
-       * @return T* the character we want to return no.
-       */
-      template<class T>
-      std::enable_if_t<std::is_pointer<T>::value> ReturnFromCharacters(T& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case ::myodd::dynamic::Character_wchar_t:
-          if (nullptr == _svalue)
-          {
-            const_cast<Any*>(this)->CreateString();
-          }
-          value = (T)_svalue->c_str();
-          break;
-
-        case ::myodd::dynamic::Character_char:
-        case ::myodd::dynamic::Character_signed_char:
-        case ::myodd::dynamic::Character_unsigned_char:
-          value = static_cast<char*>(_cvalue);
-          break;
-
-        default:
-          // do we need to create the string representation?
-          if (nullptr == _svalue)
-          {
-            const_cast<Any*>(this)->CreateString();
-          }
-          value = (T)_svalue->c_str();
-          break;
-        }
-      }
-
-      /**
-       * Return a character
-       * std::wstring& value the character we want to return no.
-       */
-      void ReturnFromCharacters(std::wstring& value) const
-      {
-        wchar_t* wc = nullptr;
-        ReturnFromCharacters(wc);
-        value = std::wstring(wc);
-      }
-
-      /**
-       * Return a character
-       * std::string& value the character we want to return no.
-       */
-      void ReturnFromCharacters(std::string& value) const
-      {
-        char* c = nullptr;
-        ReturnFromCharacters(c);
-        value = std::string(c);
-      }
-
-      /**
-       * Return a character
-       * @return T* the character we want to return no.
-       */
-      void ReturnFromCharacters(wchar_t*& value ) const
-      {
-        switch (Type())
-        {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
-          throw std::bad_cast();
-
-        case ::myodd::dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case ::myodd::dynamic::Character_wchar_t:
-          value = static_cast<wchar_t*>((void*)_cvalue);
-          break;
-
-        case ::myodd::dynamic::Character_char:
-        case ::myodd::dynamic::Character_signed_char:
-        case ::myodd::dynamic::Character_unsigned_char:
-          if (nullptr == _swvalue)
-          {
-            const_cast<Any*>(this)->CreateWideString();
-          }
-          value = const_cast<wchar_t*>( _swvalue->c_str() );
-          break;
-
-        default:
-          // do we need to create the string representation?
-          if (nullptr == _swvalue)
-          {
-            const_cast<Any*>(this)->CreateWideString();
-          }
-          value = const_cast<wchar_t*>( _swvalue->c_str() );
-          break;
-        }
-      }
-
-      /**
-       * Return a character
-       * @return T* the character we want to return no.
-       */
-      void ReturnFromCharacters(char& value) const
-      {
-        char* c;
-        ReturnFromCharacters(c);
-        value = (c != nullptr && strlen(c) > 0) ? c[0] : '\0';
-      }
-    
-      /**
-       * Create the cosmetic representation of the string.
-       */
-      void CreateWideString()
-      {
-        //  do we need to do anyting?
-        if (nullptr != _swvalue)
-        {
-          return;
-        }
-
-        // create the new string
-        _swvalue = new std::wstring();
-
-        // are we a char?
-        switch (Type())
-        {
-          case ::myodd::dynamic::Character_char:
-          case ::myodd::dynamic::Character_unsigned_char:
-          case ::myodd::dynamic::Character_signed_char:
-          {
-            if (nullptr == _cvalue)
-            {
-              *_swvalue = L"";
-              return;
-            }
-
-            using convert_typeX = std::codecvt_utf8<wchar_t>;
-            std::wstring_convert<convert_typeX, wchar_t> converterX;
-            *_swvalue = converterX.from_bytes((const char*)_cvalue);
-          }
-          return;
-        }
-
-        if (::myodd::dynamic::is_type_floating(NumberType()))
-        {
-          *_swvalue = std::to_wstring(_ldvalue);
-        }
-        else
-        {
-          *_swvalue = std::to_wstring(_llivalue);
-        }
-      }
- 
-      /**
-       * Create the cosmetic representation of the string.
-       */
-      void CreateString()
-      {
-        //  do we need to do anyting?
-        if (nullptr != _svalue)
-        {
-          return;
-        }
-
-        //  we will need a new string
-        _svalue = new std::string();
-
-        // are we a wchar_t?
-        if (Type() == ::myodd::dynamic::Character_wchar_t)
-        {
-          if (nullptr == _cvalue)
-          {
-            *_svalue = "";
-            return;
-          }
-
-          using convert_typeX = std::codecvt_utf8<wchar_t>;
-          std::wstring_convert<convert_typeX, wchar_t> converterX;
-          *_svalue = converterX.to_bytes( (const wchar_t*)_cvalue);
-          return;
-        }
-
-        if (::myodd::dynamic::is_type_floating(NumberType()))
-        {
-          *_svalue = std::to_string(_ldvalue);
-        }
-        else
-        {
-          *_svalue = std::to_string(_llivalue);
-        }
-      }
-
-      /**
-       * Clean up the value(s)
-       */
-      void CleanValues()
-      {
-        // delete the trivial value
-        delete _tvalue;
-
-        // delete the char if need be
-        delete _cvalue;
-
-        // delete the cosmetic strings
-        delete _svalue;
-        delete _swvalue;
-
-        // reset the values
-        _llivalue = 0;
-        _ldvalue = 0;
-        _lcvalue = 0;
-        _ltvalue = 0;
-        _cvalue = nullptr;
-        _svalue = nullptr;
-        _swvalue = nullptr;
-        _tvalue = nullptr;
-        _ptvalue = nullptr;
-      }
-
-      /**
-       * Create a value from a double/float/long double number..
-       * @param const T* number the number we are creating from.
-       */
       template<class T>
       void CreateFromDouble(const T& number)
       {
@@ -2515,7 +1848,7 @@ namespace myodd {
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<T>::value;
+        _type = dynamic::get_type<T>::value;
 
         // set the values
         _ldvalue = static_cast<long double>(number);
@@ -2523,9 +1856,9 @@ namespace myodd {
       }
 
       /**
-       * Create a value from a int/long/long long...
-       * @param const T* number the number we are creating from.
-       */
+      * Create a value from a int/long/long long...
+      * @param const T* number the number we are creating from.
+      */
       template<class T>
       void CreateFromInteger(const T& number)
       {
@@ -2533,7 +1866,7 @@ namespace myodd {
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<T>::value;
+        _type = dynamic::get_type<T>::value;
 
         // set the values.
         _llivalue = static_cast<long long int>(number);
@@ -2541,12 +1874,12 @@ namespace myodd {
       }
 
       /**
-       * Create from a trivally copyable value.
-       * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
-       * @param const T& trivial the structure/class we want to copy from.
-       */
+      * Create from a trivally copyable value.
+      * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
+      * @param const T& trivial the structure/class we want to copy from.
+      */
       template<class T>
-      std::enable_if_t<!std::is_pointer<T>::value> CreateFromTrivial( T trivial)
+      std::enable_if_t<!std::is_pointer<T>::value> CreateFromTrivial(T trivial)
       {
         // as it is not a pointer value, it has to be trivially copyable.
         if (!std::is_trivially_copyable<T>::value)
@@ -2558,7 +1891,7 @@ namespace myodd {
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::Misc_trivial;
+        _type = dynamic::Misc_trivial;
 
         // set the values.
         _llivalue = 0;
@@ -2572,10 +1905,10 @@ namespace myodd {
       }
 
       /**
-       * Create from a trivally copyable value.
-       * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
-       * @param const T& trivial the structure/class we want to copy from.
-       */
+      * Create from a trivally copyable value.
+      * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
+      * @param const T& trivial the structure/class we want to copy from.
+      */
       template<class T>
       std::enable_if_t<std::is_pointer<T>::value> CreateFromTrivial(const T& trivial)
       {
@@ -2583,7 +1916,7 @@ namespace myodd {
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::Misc_trivial_ptr;
+        _type = dynamic::Misc_trivial_ptr;
 
         // set the values.
         _llivalue = 0;
@@ -2594,41 +1927,57 @@ namespace myodd {
       }
 
       /**
-       * Create a value from a multiple characters..
-       * @param const T* value the character we are creating from.
-       */
+      * Create a value from a multiple characters..
+      * @param const T* value the character we are creating from.
+      */
       template<class T>
       void CreateFromCharacters(const T* value)
+      {
+        // get the len of the given pointer, as we have no lenght give
+        // we are usuming that this is a null terminated string.
+        size_t givenLen = value ? ((std::strlen((const char*)value) + 1) * sizeof(T)) : 0;
+
+        // we can now try and create it with the given len.
+        CreateFromCharacters(value, givenLen);
+      }
+
+      /**
+       * Create this with a signed/unsigned char*
+       * @param const T source the char value we are creating from.
+       * @param size_t the lenght we are working with.
+       */
+      template<class T>
+      std::enable_if_t<std::is_pointer<T>::value> CreateFromCharacters(const T source, size_t sourceLen )
       {
         // clean the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<T>::value;
+        _type = dynamic::get_type< typename std::remove_pointer<T>::type >::value;
 
-        if (nullptr != value)
+        if (nullptr != source)
         {
           // get the number of characters.
-          _lcvalue = (std::strlen((const char*)value)+1) * sizeof(T);
+          _lcvalue = sourceLen;
 
           // create the character, we know it is at least one, even for an empty string.
           _cvalue = new char[_lcvalue];
 
           // memory clear
           std::memset(_cvalue, '\0', _lcvalue);
-          std::memcpy(_cvalue, value, _lcvalue);
+          std::memcpy(_cvalue, source, _lcvalue);
 
           if (_lcvalue > 1)
           {
             // it does not matter if this is signed or not signed
             // we are converting it to an unsigned long long and back to a long long
             // in reality they both take the same amount of space.
-            _llivalue = static_cast<long long int>(std::strtoull((const char*)value, nullptr, 0));
+            _llivalue = static_cast<long long int>(std::strtoull((const char*)source, nullptr, 0));
 
             // try and get the value as a long double.
             // this is represented in a slightly different way in memory
             // hence the reason we cannot just cast our long long to long double.
-            _ldvalue = std::strtold((const char*)value, nullptr);
+            _ldvalue = std::strtold((const char*)source, nullptr);
           }
           else
           {
@@ -2644,7 +1993,7 @@ namespace myodd {
           const char c = '\0';
 
           // default values.
-          _lcvalue = sizeof(T);
+          _lcvalue = sizeof( typename std::remove_pointer<T>::type );
           _cvalue = new char[_lcvalue];
           std::memset(_cvalue, 0, _lcvalue);
           std::memcpy(_cvalue, &c, _lcvalue);
@@ -2655,44 +2004,59 @@ namespace myodd {
         }
 
         // parse the string to set the string flag
-        ParseStringStatus((const char*)value);
+        ParseStringStatus((const char*)source, sourceLen );
       }
 
       /**
-       * Create a value from a multiple characters..
-       * @param const T* value the character we are creating from.
-       */
-      void CreateFromCharacters( const wchar_t* value)
+      * Create a value from a multiple characters..
+      * @param const T* value the character we are creating from.
+      */
+      void CreateFromCharacters(const wchar_t* value)
+      {
+        // get the len of the given pointer, as we have no lenght give
+        // we are usuming that this is a null terminated string.
+        size_t givenLen = value ? ((std::wcslen((const wchar_t*)value) + 1) * sizeof(wchar_t)) : 0;
+
+        // we can now try and create it with the given len.
+        CreateFromCharacters(value, givenLen);
+      }
+
+      /**
+      * Create this with a wchar_t*
+      * @param const T* source the char value we are creating from.
+      * @param size_t the lenght we are working with.
+      */
+      void CreateFromCharacters(const wchar_t* source, size_t sourceLen)
       {
         // clean the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<wchar_t>::value;
+        _type = dynamic::get_type<wchar_t>::value;
 
-        if (nullptr != value)
+        if (nullptr != source)
         {
           // default values.
-          _lcvalue = (std::wcslen(value)+1) * sizeof(wchar_t);
+          _lcvalue = sourceLen;
 
           // create the character, we know it is at least one, even for an empty string.
           _cvalue = new char[_lcvalue];
 
           // memory clear
           std::memset(_cvalue, '\0', _lcvalue);
-          std::memcpy(_cvalue, value, _lcvalue);
+          std::memcpy(_cvalue, source, _lcvalue);
 
           if (_lcvalue > 1)
           {
             // it does not matter if this is signed or not signed
             // we are converting it to an unsigned long long and back to a long long
             // in reality they both take the same amount of space.
-            _llivalue = static_cast<long long int>(std::wcstoull((const wchar_t*)value, nullptr, 0));
+            _llivalue = static_cast<long long int>(std::wcstoull((const wchar_t*)source, nullptr, 0));
 
             // try and get the value as a long double.
             // this is represented in a slightly different way in memory
             // hence the reason we cannot just cast our long long to long double.
-            _ldvalue = std::wcstold((const wchar_t*)value, nullptr);
+            _ldvalue = std::wcstold((const wchar_t*)source, nullptr);
           }
           else
           {
@@ -2717,21 +2081,21 @@ namespace myodd {
         }
 
         // parse the string to set the string flag
-        ParseStringStatus((const wchar_t*)value);
+        ParseStringStatus((const wchar_t*)source, sourceLen);
       }
 
       /**
-       * Create a value from a single character.
-       * @param const char value the character we are creating from.
-       */
+      * Create a value from a single character.
+      * @param const char value the character we are creating from.
+      */
       template<class T>
-      void CreateFromCharacter(const T value )
+      void CreateFromCharacter(const T value)
       {
         // clean the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<T>::value;
+        _type = dynamic::get_type<T>::value;
 
         // create the character.
         _lcvalue = sizeof(T);
@@ -2759,16 +2123,16 @@ namespace myodd {
       }
 
       /**
-       * Create a value from a single wide character.
-       * @param const wchar_t value the character we are creating from.
-       */
-      void CreateFromCharacter( const wchar_t value)
+      * Create a value from a single wide character.
+      * @param const wchar_t value the character we are creating from.
+      */
+      void CreateFromCharacter(const wchar_t value)
       {
         // clean the values.
         CleanValues();
 
         // set the type
-        _type = ::myodd::dynamic::get_type<wchar_t>::value;
+        _type = dynamic::get_type<wchar_t>::value;
 
         // create the character.
         _lcvalue = sizeof(wchar_t);
@@ -2795,53 +2159,902 @@ namespace myodd {
           _stringStatus = StringStatus_Not_A_Number;
         }
       }
+#ifdef _MSC_VER
+# pragma endregion CreateFrom - Create *this from T
+#endif
+
+#ifdef _MSC_VER
+# pragma region
+#endif
+      /**
+      * Try and cast this to a posible value.
+      * @return T the value we are looking for.
+      */
+      template<class T>
+      void CastTo(T& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          CastToTrivial(value);
+          break;
+
+          // none of the fundamental types are handled here.
+          // each has its own function
+        default:
+          // we cannot cast this.
+          throw std::bad_cast();
+        }
+      }
 
       /**
-       * depending on the type we return if we should use the unsigned integer in a formula
-       * @return bool if we should use the long long int as an unsigned signed integer.
-       */
+      * Cast this to a fundamental type
+      * @return short int the value.
+      */
+      void CastTo(float& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return double the value.
+      */
+      void CastTo(double& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return long double the value.
+      */
+      void CastTo(long double& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return short int the value.
+      */
+      void CastTo(short int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return unsigned short int the value.
+      */
+      void CastTo(unsigned short int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return int the value.
+      */
+      void CastTo(int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return unsigned int the value.
+      */
+      void CastTo(unsigned int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return long the value.
+      */
+      void CastTo(long int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return unsigned long the value.
+      */
+      void CastTo(unsigned long int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return long long the value.
+      */
+      void CastTo(long long int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return unsigned long long the value.
+      */
+      void CastTo(unsigned long long int& value) const
+      {
+        CastToFundamental(value);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return char* the value we are looking for.
+      */
+      void CastTo(char*& value) const
+      {
+        CastToCharacters(value);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @param const signed char* value the value we are looking for.
+      */
+      void CastTo(const signed char*& value) const
+      {
+        char* c = nullptr;
+        CastToCharacters(c);
+        value = const_cast<const signed char*>((signed char*)c);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @param signed char* value the value we are looking for.
+      */
+      void CastTo(signed char*& value) const
+      {
+        char* c = nullptr;
+        CastToCharacters(c);
+        value = (signed char*)c;
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @param const unsigned char* value the value we are looking for.
+      */
+      void CastTo(const unsigned char*& value) const
+      {
+        char* c = nullptr;
+        CastToCharacters(c);
+        value = const_cast<const unsigned char*>((unsigned char*)c);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @param unsigned char* value the value we are looking for.
+      */
+      void CastTo(unsigned char*& value) const
+      {
+        char* c = nullptr;
+        CastToCharacters(c);
+        value = (unsigned char*)c;
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @param const char* value the value we are looking for.
+      */
+      void CastTo(const char*& value) const
+      {
+        char* c = nullptr;
+        CastToCharacters(c);
+        value = c;
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return wchar_t* the value we are looking for.
+      */
+      void CastTo(wchar_t*& value) const
+      {
+        CastToCharacters(value);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @param wchar_t* value the value we are looking for.
+      */
+      void CastTo(const wchar_t*& value) const
+      {
+        wchar_t* wc = nullptr;
+        CastToCharacters(wc);
+        value = wc;
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return wchar_t* the value we are looking for.
+      */
+      void CastTo(std::wstring& value) const
+      {
+        CastToCharacters(value);
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return char the value we are looking for.
+      */
+      void CastTo(char& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = '\0';
+          break;
+
+        case dynamic::Character_wchar_t:
+          value = static_cast<char>(*(wchar_t*)_cvalue);
+          break;
+
+        case dynamic::Character_char:
+          value = static_cast<char>(*(char*)_cvalue);
+          break;
+
+        case dynamic::Character_signed_char:
+          value = static_cast<char>(*(signed char*)_cvalue);
+          break;
+
+        case dynamic::Character_unsigned_char:
+          value = static_cast<char>(*(unsigned char*)_cvalue);
+          break;
+
+        default:
+          value = static_cast<char>(_llivalue);
+          break;
+        }
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return wchar_t the value we are looking for.
+      */
+      void CastTo(wchar_t& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = '\0';
+          break;
+
+        case dynamic::Character_wchar_t:
+          value = static_cast<wchar_t>(*(wchar_t*)_cvalue);
+          break;
+
+        case dynamic::Character_char:
+          value = static_cast<wchar_t>(*(char*)_cvalue);
+          break;
+
+        case dynamic::Character_signed_char:
+          value = static_cast<wchar_t>(*(signed char*)_cvalue);
+          break;
+
+        case dynamic::Character_unsigned_char:
+          value = static_cast<wchar_t>(*(unsigned char*)_cvalue);
+          break;
+
+        default:
+          value = static_cast<wchar_t>(_llivalue);
+          break;
+        }
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return unsigned char the value we are looking for.
+      */
+      void CastTo(unsigned char& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = '\0';
+          break;
+
+        case dynamic::Character_wchar_t:
+          value = static_cast<unsigned char>(*(wchar_t*)_cvalue);
+          break;
+
+        case dynamic::Character_char:
+          value = static_cast<unsigned char>(*(char*)_cvalue);
+          break;
+
+        case dynamic::Character_signed_char:
+          value = static_cast<unsigned char>(*(signed char*)_cvalue);
+          break;
+
+        case dynamic::Character_unsigned_char:
+          value = static_cast<unsigned char>(*(unsigned char*)_cvalue);
+          break;
+
+        default:
+          value = static_cast<unsigned char>(_llivalue);
+          break;
+        }
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return unsigned char the value we are looking for.
+      */
+      void CastTo(signed char& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = '\0';
+          break;
+
+        case dynamic::Character_wchar_t:
+          value = static_cast<signed char>(*(wchar_t*)_cvalue);
+          break;
+
+        case dynamic::Character_char:
+          value = static_cast<signed char>(*(char*)_cvalue);
+          break;
+
+        case dynamic::Character_signed_char:
+          value = static_cast<signed char>(*(signed char*)_cvalue);
+          break;
+
+        case dynamic::Character_unsigned_char:
+          value = static_cast<signed char>(*(unsigned char*)_cvalue);
+          break;
+
+        default:
+          value = static_cast<signed char>(_llivalue);
+          break;
+        }
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * we have a specialised function as casting to bool can be inefficent.
+      * @return bool the value we are looking for.
+      */
+      void CastTo(bool& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          // null is false/
+          value = false;
+          return;
+
+        case dynamic::Misc_unknown:
+        case dynamic::Boolean_bool:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_char:
+        case dynamic::Character_wchar_t:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_long_double:
+          break;
+
+        default:
+          throw std::runtime_error("Unknown data Type");
+        }
+
+        // if we are a float we must use it, in case we have 0.0001
+        // if we were using the long long int then we would only have 0
+        if (dynamic::is_type_floating(NumberType()))
+        {
+          value = (_ldvalue != 0);
+        }
+        else
+        {
+          // but we use the int if we are told to
+          // in case the long double is not valid.
+          value = (_llivalue != 0);
+        }
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return short int the value.
+      */
+      template<class T>
+      std::enable_if_t<!std::is_pointer<T>::value> CastToTrivial(T& value) const
+      {
+        // as it is not a pointer, it has to be trivially copyable.
+        if (!std::is_trivially_copyable<T>::value)
+        {
+          // we cannot convert this T to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // As we are looking for the non pointer value we can 
+        // only return the non pointer version of the trivial
+        // we cannot cast our pointer into whatever decltype(T) was passed to us.
+        if (Type() != dynamic::Misc_trivial)
+        {
+          // we cannot convert this to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // can we fit our data exactly inside the structure that they are trying to make us use.
+        if (sizeof(T) != _ltvalue)
+        {
+          throw std::bad_cast();
+        }
+
+        // copy the trival value.
+        std::memcpy(&value, _tvalue, _ltvalue);
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return short int the value.
+      */
+      template<class T>
+      std::enable_if_t<std::is_pointer<T>::value> CastToTrivial(T& value) const
+      {
+        if (!IsTrivial())
+        {
+          // we cannot convert this to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // we konw, that we handle certain pointers, (strings, ints etc)
+        // so there is no way that we can cast a trivial value to something
+        // we know it cannot be, only unknown types are 'trivial'
+        if (dynamic::Misc_unknown != dynamic::get_type< typename std::remove_pointer<T>::type >::value)
+        {
+          // we cannot cast to this T* as we know
+          // that it was not what it was created with, (as we handle known pointers).
+          throw std::bad_cast();
+        }
+
+        // are _we_ a non pointer trivial?
+        // in that case we can return our address.
+        // the user should not be allowed to delete
+        //  it as they did not create this value.
+        if (dynamic::Misc_trivial == Type())
+        {
+          value = (T)_tvalue;
+        }
+        else
+        {
+          // we are a pointer value so we can return it.
+          value = (T)_ptvalue;
+        }
+      }
+
+      /**
+      * Do common casting to known fundamental type.
+      * T the 'fundamental' cast
+      */
+      template<class T>
+      std::enable_if_t<!std::is_pointer<T>::value> CastToFundamental(T& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = 0;
+          break;
+
+          // char
+        case dynamic::Character_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_wchar_t:
+          if (dynamic::is_type_floating(NumberType()))
+          {
+            value = static_cast<T>(_ldvalue);
+          }
+          else
+          {
+            value = static_cast<T>(_llivalue);
+          }
+          break;
+
+          // Integer
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+          value = static_cast<T>(_llivalue);
+          break;
+
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_long_double:
+          value = static_cast<T>(_ldvalue);
+          break;
+
+        case dynamic::Boolean_bool:
+          value = static_cast<T>(_ldvalue);
+          break;
+
+        default:
+          // we cannot cast this.
+          throw std::bad_cast();
+        }
+      }
+
+      /**
+      * Return a character
+      * @return T* the character we want to return no.
+      */
+      template<class T>
+      std::enable_if_t<std::is_pointer<T>::value> CastToCharacters(T& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = '\0';
+          break;
+
+        case dynamic::Character_wchar_t:
+          if (nullptr == _svalue)
+          {
+            const_cast<Any*>(this)->CreateString();
+          }
+          value = (T)_svalue->c_str();
+          break;
+
+        case dynamic::Character_char:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
+          value = static_cast<char*>(_cvalue);
+          break;
+
+        default:
+          // do we need to create the string representation?
+          if (nullptr == _svalue)
+          {
+            const_cast<Any*>(this)->CreateString();
+          }
+          value = (T)_svalue->c_str();
+          break;
+        }
+      }
+
+      /**
+      * Return a character
+      * std::wstring& value the character we want to return no.
+      */
+      void CastToCharacters(std::wstring& value) const
+      {
+        wchar_t* wc = nullptr;
+        CastToCharacters(wc);
+        value = std::wstring(wc);
+      }
+
+      /**
+      * Return a character
+      * std::string& value the character we want to return no.
+      */
+      void CastToCharacters(std::string& value) const
+      {
+        char* c = nullptr;
+        CastToCharacters(c);
+        value = std::string(c);
+      }
+
+      /**
+      * Return a character
+      * @return T* the character we want to return no.
+      */
+      void CastToCharacters(wchar_t*& value) const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          value = '\0';
+          break;
+
+        case dynamic::Character_wchar_t:
+          value = static_cast<wchar_t*>((void*)_cvalue);
+          break;
+
+        case dynamic::Character_char:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
+          if (nullptr == _swvalue)
+          {
+            const_cast<Any*>(this)->CreateWideString();
+          }
+          value = const_cast<wchar_t*>(_swvalue->c_str());
+          break;
+
+        default:
+          // do we need to create the string representation?
+          if (nullptr == _swvalue)
+          {
+            const_cast<Any*>(this)->CreateWideString();
+          }
+          value = const_cast<wchar_t*>(_swvalue->c_str());
+          break;
+        }
+      }
+
+      /**
+      * Return a character
+      * @return T* the character we want to return no.
+      */
+      void CastToCharacters(char& value) const
+      {
+        char* c;
+        CastToCharacters(c);
+        value = (c != nullptr && _lcvalue > 0) ? c[0] : '\0';
+      }
+
+#ifdef _MSC_VER
+# pragma endregion  CastTo - Cast *this to T&
+#endif
+
+      /**
+      * Create the cosmetic representation of the string.
+      */
+      void CreateWideString()
+      {
+        //  do we need to do anyting?
+        if (nullptr != _swvalue)
+        {
+          return;
+        }
+
+        // create the new string
+        _swvalue = new std::wstring();
+
+        // are we a char?
+        switch (Type())
+        {
+        case dynamic::Character_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_signed_char:
+        {
+          if (nullptr == _cvalue)
+          {
+            *_swvalue = L"";
+            return;
+          }
+
+          using convert_typeX = std::codecvt_utf8<wchar_t>;
+          std::wstring_convert<convert_typeX, wchar_t> converterX;
+          *_swvalue = converterX.from_bytes((const char*)_cvalue);
+          return;
+        }
+
+        case dynamic::Misc_unknown:
+        case dynamic::Misc_null:
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+        case dynamic::Boolean_bool:
+        case dynamic::Character_wchar_t:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_long_double:
+          break;
+
+        default:
+          // unknown
+          throw std::runtime_error("Unknown data Type");
+        }
+
+        if (dynamic::is_type_floating(NumberType()))
+        {
+          *_swvalue = std::to_wstring(_ldvalue);
+        }
+        else
+        {
+          *_swvalue = std::to_wstring(_llivalue);
+        }
+      }
+
+      /**
+      * Create the cosmetic representation of the string.
+      */
+      void CreateString()
+      {
+        //  do we need to do anyting?
+        if (nullptr != _svalue)
+        {
+          return;
+        }
+
+        //  we will need a new string
+        _svalue = new std::string();
+
+        // are we a wchar_t?
+        if (Type() == dynamic::Character_wchar_t)
+        {
+          if (nullptr == _cvalue)
+          {
+            *_svalue = "";
+            return;
+          }
+
+          using convert_typeX = std::codecvt_utf8<wchar_t>;
+          std::wstring_convert<convert_typeX, wchar_t> converterX;
+          *_svalue = converterX.to_bytes((const wchar_t*)_cvalue);
+          return;
+        }
+
+        if (dynamic::is_type_floating(NumberType()))
+        {
+          *_svalue = std::to_string(_ldvalue);
+        }
+        else
+        {
+          *_svalue = std::to_string(_llivalue);
+        }
+      }
+
+      /**
+      * Clean up the value(s)
+      */
+      void CleanValues()
+      {
+        // delete the trivial value
+        delete _tvalue;
+
+        // delete the char if need be
+        delete _cvalue;
+
+        // delete the cosmetic strings
+        delete _svalue;
+        delete _swvalue;
+
+        // reset the values
+        _llivalue = 0;
+        _ldvalue = 0;
+        _lcvalue = 0;
+        _ltvalue = 0;
+        _cvalue = nullptr;
+        _svalue = nullptr;
+        _swvalue = nullptr;
+        _tvalue = nullptr;
+        _ptvalue = nullptr;
+      }
+
+      /**
+      * depending on the type we return if we should use the unsigned integer in a formula
+      * @return bool if we should use the long long int as an unsigned signed integer.
+      */
       bool UseUnsignedInteger() const
       {
         // divide the values and set it.
         switch (NumberType())
         {
-        case ::myodd::dynamic::Integer_unsigned_short_int:
-        case ::myodd::dynamic::Integer_unsigned_int:
-        case ::myodd::dynamic::Integer_unsigned_long_int:
-        case ::myodd::dynamic::Integer_unsigned_long_long_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
           return true;
-          break;
+
+        case dynamic::Misc_unknown:
+        case dynamic::Misc_null:
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+        case dynamic::Boolean_bool:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_char:
+        case dynamic::Character_wchar_t:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_long_double:
+          return false;
         }
-        return false;
+
+        // unknown
+        throw std::runtime_error("Unknown data Type");
       }
 
       /**
-       * depending on the type we return if we should use the signed integer in a formula
-       * @return bool if we should use the long long int as a signed integer.
-       */
+      * depending on the type we return if we should use the signed integer in a formula
+      * @return bool if we should use the long long int as a signed integer.
+      */
       bool UseSignedInteger() const
       {
         // divide the values and set it.
         switch (NumberType())
         {
-        case ::myodd::dynamic::Integer_short_int:
-        case ::myodd::dynamic::Integer_int:
-        case ::myodd::dynamic::Integer_long_int:
-        case ::myodd::dynamic::Integer_long_long_int:
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_long_long_int:
           return true;
-          break;
+
+        case dynamic::Misc_unknown:
+        case dynamic::Misc_null:
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
+        case dynamic::Boolean_bool:
+        case dynamic::Character_signed_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_char:
+        case dynamic::Character_wchar_t:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_long_double:
+          return false;
         }
-        return false;
+
+        // unknown
+        throw std::runtime_error("Unknown data Type");
       }
 
       /**
-       * Divide *this number with T number.
-       * @param ::myodd::dynamic::Type type the type we want to set the value with.
-       * @param T number the number we will be dividing with.
-       * @return *this the divided number.
-       */
+      * Divide *this number with T number.
+      * @param dynamic::Type type the type we want to set the value with.
+      * @param T number the number we will be dividing with.
+      * @return *this the divided number.
+      */
       template<class T>
-      Any& DivideNumber(::myodd::dynamic::Type type, T number)
+      Any& DivideNumber(dynamic::Type type, T number)
       {
 
         // check for division by zero.
@@ -2854,15 +3067,15 @@ namespace myodd {
         // divide the values and set it.
         if (UseUnsignedInteger())
         {
-          CastFrom((unsigned long long int)_llivalue / (long double)number);
+          CreateFrom((unsigned long long int)_llivalue / (long double)number);
         }
         else if (UseSignedInteger())
         {
-          CastFrom(( long long int)_llivalue / (long double)number);
+          CreateFrom((long long int)_llivalue / (long double)number);
         }
         else
         {
-          CastFrom( _ldvalue / (long double)number);
+          CreateFrom(_ldvalue / (long double)number);
         }
 
         // update the type.
@@ -2873,22 +3086,22 @@ namespace myodd {
       }
 
       /**
-       * Multiply T number and *this number.
-       * @param ::myodd::dynamic::Type type the type we want to set the value with.
-       * @param T number the number we will be adding.
-       * @return *this the multiplied number.
-       */
+      * Multiply T number and *this number.
+      * @param dynamic::Type type the type we want to set the value with.
+      * @param T number the number we will be adding.
+      * @return *this the multiplied number.
+      */
       template<class T>
-      Any& MultiplyNumber(::myodd::dynamic::Type type, T number)
+      Any& MultiplyNumber(dynamic::Type type, T number)
       {
         // add the values.
-        if (::myodd::dynamic::is_type_floating(type))
+        if (dynamic::is_type_floating(type))
         {
-          CastFrom(_ldvalue * number);
+          CreateFrom(_ldvalue * number);
         }
         else
         {
-          CastFrom(_llivalue * number);
+          CreateFrom(_llivalue * number);
         }
 
         // update the type.
@@ -2899,25 +3112,25 @@ namespace myodd {
       }
 
       /**
-       * Add T number to *this number.
-       * @param ::myodd::dynamic::Type type the type we want to set the value with.
-       * @param T number the number we will be adding.
-       * @return *this the added number.
-       */
+      * Add T number to *this number.
+      * @param dynamic::Type type the type we want to set the value with.
+      * @param T number the number we will be adding.
+      * @return *this the added number.
+      */
       template<class T>
-      Any& AddNumber(::myodd::dynamic::Type type, T number)
+      Any& AddNumber(dynamic::Type type, T number)
       {
         if (UseUnsignedInteger())
         {
-          CastFrom((unsigned long long int)_llivalue + number);
+          CreateFrom((unsigned long long int)_llivalue + number);
         }
         else if (UseSignedInteger())
         {
-          CastFrom((long long int)_llivalue + number);
+          CreateFrom((long long int)_llivalue + number);
         }
         else
         {
-          CastFrom(_ldvalue + number);
+          CreateFrom(_ldvalue + number);
         }
 
         // update the type.
@@ -2928,25 +3141,25 @@ namespace myodd {
       }
 
       /**
-       * Subtract T number from *this.
-       * @param ::myodd::dynamic::Type type the type we want to set the value with.
-       * @param T number the number we will be subtracting from this.
-       * @return *this the subtracted number.
-       */
+      * Subtract T number from *this.
+      * @param dynamic::Type type the type we want to set the value with.
+      * @param T number the number we will be subtracting from this.
+      * @return *this the subtracted number.
+      */
       template<class T>
-      Any& SubtractNumber(::myodd::dynamic::Type type, T number)
+      Any& SubtractNumber(dynamic::Type type, T number)
       {
         if (UseUnsignedInteger())
         {
-          CastFrom((unsigned long long int)_llivalue - number);
+          CreateFrom((unsigned long long int)_llivalue - number);
         }
         else if (UseSignedInteger())
         {
-          CastFrom((long long int)_llivalue - number);
+          CreateFrom((long long int)_llivalue - number);
         }
         else
         {
-          CastFrom(_ldvalue - number);
+          CreateFrom(_ldvalue - number);
         }
 
         // update the type.
@@ -2958,7 +3171,7 @@ namespace myodd {
 
       // the string status, does it represent a number? a floating number?
       // is it a partial or non partial number?
-      enum StringStatus{
+      enum StringStatus {
         StringStatus_Not_A_Number,                    // 'blah' or 'blah123'
         StringStatus_Partial_Pos_Number,              // '+123blah'
         StringStatus_Partial_Neg_Number,              // '-123blah'
@@ -2973,15 +3186,15 @@ namespace myodd {
       };
 
       /**
-       * Check if this is a trivial type or not.
-       * @return boolean if *this is trivial or not.
-       */
+      * Check if this is a trivial type or not.
+      * @return boolean if *this is trivial or not.
+      */
       bool IsTrivial() const
       {
         switch (Type())
         {
-        case ::myodd::dynamic::Misc_trivial:
-        case ::myodd::dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_trivial_ptr:
           // trivial
           return true;
 
@@ -2993,28 +3206,28 @@ namespace myodd {
         return false;
       }
 
-      /** 
-       * Check if our string is a number or not.
-       * @param bool allowPartial if partial strings are allowed or not.
-       * @return bool if this string represents a number or not.
-       */
-      bool IsStringNumber( bool allowPartial ) const
+      /**
+      * Check if our string is a number or not.
+      * @param bool allowPartial if partial strings are allowed or not.
+      * @return bool if this string represents a number or not.
+      */
+      bool IsStringNumber(bool allowPartial) const
       {
         switch (_stringStatus)
         {
-        case ::myodd::dynamic::Any::StringStatus_Partial_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Partial_Neg_Number:
-        case ::myodd::dynamic::Any::StringStatus_Floating_Partial_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Floating_Partial_Neg_Number:
+        case dynamic::Any::StringStatus_Partial_Pos_Number:
+        case dynamic::Any::StringStatus_Partial_Neg_Number:
+        case dynamic::Any::StringStatus_Floating_Partial_Pos_Number:
+        case dynamic::Any::StringStatus_Floating_Partial_Neg_Number:
           return allowPartial; // only true if we allow partials.
 
-        case ::myodd::dynamic::Any::StringStatus_Floating_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Floating_Neg_Number:
-        case ::myodd::dynamic::Any::StringStatus_Pos_Number:
-        case ::myodd::dynamic::Any::StringStatus_Neg_Number:
+        case dynamic::Any::StringStatus_Floating_Pos_Number:
+        case dynamic::Any::StringStatus_Floating_Neg_Number:
+        case dynamic::Any::StringStatus_Pos_Number:
+        case dynamic::Any::StringStatus_Neg_Number:
           return true;
 
-        case ::myodd::dynamic::Any::StringStatus_Not_A_Number:
+        case dynamic::Any::StringStatus_Not_A_Number:
         default:
           break;
         }
@@ -3024,69 +3237,72 @@ namespace myodd {
       }
 
       /**
-       * Parse a string to see if it is a number, partial or not.
-       * @param const char *str the string we are parsing.
-       */
-      void ParseStringStatus(const char *str)
+      * Parse a string to see if it is a number, partial or not.
+      * @param const char *str the string we are parsing.
+      * @param size_t sourceLen the source len
+      */
+      void ParseStringStatus(const char *source, size_t sourceLen)
       {
         //  call the const char* equivalent.
-        ParseStringStatus(str, '+', '-', '.', '\0');
+        ParseStringStatus(source, sourceLen, '+', '-', '.', '\0' );
       }
 
       /**
       * Parse a string to see if it is a number, partial or not.
       * @param const wchar_t *str the string we are parsing.
+      * @param size_t sourceLen the source len
       */
-      void ParseStringStatus(const wchar_t *str)
+      void ParseStringStatus(const wchar_t *source, size_t sourceLen)
       {
         //  call the const wide char* equivalent.
-        ParseStringStatus(str, L'+', L'-', L'.', L'\0');
+        ParseStringStatus(source, sourceLen, L'+', L'-', L'.', L'\0');
       }
 
       /**
-       * check if this is a digit char, (0-9)
-       * @param const char c the character we are checking.
-       * @return bool if the number is a digit or not.
-       */
-      inline bool _isdigit(const char c) const { return (isdigit(c) != 0);}
+      * check if this is a digit char, (0-9)
+      * @param const char c the character we are checking.
+      * @return bool if the number is a digit or not.
+      */
+      inline bool _isdigit(const char c) const { return (c >= -1 && c <= 255) && (isdigit(c) != 0); }
 
       /**
-       * check if this is a space wide char
-       * @param const wchar_t c the character we are checking.
-       * @return bool if the char is a space or not.
-       */
-      inline bool _isspace(const char c) const { return (isspace(c) != 0); }
+      * check if this is a space wide char
+      * @param const wchar_t c the character we are checking.
+      * @return bool if the char is a space or not.
+      */
+      inline bool _isspace(const char c) const { return (c >= -1 && c <= 255) && (isspace(c) != 0); }
 
       /**
-       * check if this is a digit wide char, (0-9)
-       * @param const wchar_t c the character we are checking.
-       * @return bool if the number is a digit or not.
-       */
-      inline bool _isdigit(const wchar_t c)const { return (iswdigit(c) != 0); }
+      * check if this is a digit wide char, (0-9)
+      * @param const wchar_t c the character we are checking.
+      * @return bool if the number is a digit or not.
+      */
+      inline bool _isdigit(const wchar_t c)const { return (c >= -1 && c <= 255) && (iswdigit(c) != 0); }
 
       /**
-       * check if this is a space wide char
-       * @param const wchar_t c the character we are checking.
-       * @return bool if the char is a space or not.
-       */
-      inline bool _isspace(const wchar_t c)const { return (iswspace(c) != 0); }
+      * check if this is a space wide char
+      * @param const wchar_t c the character we are checking.
+      * @return bool if the char is a space or not.
+      */
+      inline bool _isspace(const wchar_t c)const { return (c >= -1 && c <= 255) && (iswspace(c) != 0); }
 
       /**
-       * Parse a string to check if it is a number or not.
-       * -0 and +0 keep their sign and 12.00 remains a floating point.
-       * because this is how it was pased to us, it is up to the user to make sure they pass
-       * a valid number that makes it posible to investigate.
-       * @param const T* str the string we are checking.
-       * @param const T str_plus the plus sign, ('+')
-       * @param const T str_minus the minus sign, ('-')
-       * @param const T str_decimal how a decimal is represented, , ('.')
-       * @param const T str_eol the eol character, ('\0')
-       */
+      * Parse a string to check if it is a number or not.
+      * -0 and +0 keep their sign and 12.00 remains a floating point.
+      * because this is how it was pased to us, it is up to the user to make sure they pass
+      * a valid number that makes it posible to investigate.
+      * @param const T* source the string we are checking.
+      * @param size_t sourceLen the len of the 'string' we are checking.
+      * @param const T str_plus the plus sign, ('+')
+      * @param const T str_minus the minus sign, ('-')
+      * @param const T str_decimal how a decimal is represented, , ('.')
+      * @param const T str_eol the eol character, ('\0')
+      */
       template<typename T>
-      void ParseStringStatus( const T* str, const T str_plus, const T str_minus, const T str_decimal, const T str_eol )
+      void ParseStringStatus(const T* source, size_t sourceLen, const T str_plus, const T str_minus, const T str_decimal, const T str_eol)
       {
         // sanity check
-        if (nullptr == str)
+        if (nullptr == source)
         {
           // null is not a number
           _stringStatus = StringStatus_Not_A_Number;
@@ -3099,10 +3315,14 @@ namespace myodd {
         bool decimal = false;
 
         // go around all the characters.
-        for (const T *it = str; *it != str_eol; *it++)
+        auto loopLen = size_t(sourceLen / sizeof(T));
+        for ( size_t i = 0; i < loopLen; i+=1 )
         {
+          // get the  character.
+          const T *it = (source + i);
+
           //  is it a space?
-          if ( _isspace(*it))
+          if (_isspace(*it))
           {
             continue;
           }
@@ -3120,12 +3340,23 @@ namespace myodd {
             sign = 1;
             continue;
           }
-          
+
           // is it a decimal? as long as we have done done it.
           if (*it == str_decimal && false == decimal)
           {
             decimal = true;
             continue;
+          }
+
+          // we are done? 
+          if (*it == str_eol)
+          {
+            // this might not be the end of the string, 
+            // but it cannot be a number any more
+            // if i == sourceLen then it is the end of the string, (and not partial)
+            // otherwise it is the end, (and partial)
+            partial = (i+1 != loopLen );
+            break;
           }
 
           // is it a digit?
@@ -3149,7 +3380,7 @@ namespace myodd {
           // of by the time we found a non string, we had no number.
           _stringStatus = StringStatus_Not_A_Number;
         }
-        else if( true == partial )
+        else if (true == partial)
         {
           if (sign == 1 || sign == 0)
           {
@@ -3200,7 +3431,7 @@ namespace myodd {
       std::wstring* _swvalue;
 
       // the variable type
-      ::myodd::dynamic::Type _type;
+      dynamic::Type _type;
     };
   }
 }
