@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.5"
+#define MYODD_ANY_VERSION        "0.1.6"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001005 
+#define MYODD_ANY_VERSION_NUMBER 0001006 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -693,7 +693,7 @@ namespace myodd {
       * @param const Any& the item we are subtracting from *this.
       * @return Any *this-rhs
       */
-      template<class T> friend Any operator-( const Any& lhs, const T& rhs) { auto tmp = lhs; tmp -= Any(rhs); return tmp; }
+      template<class T> friend Any operator-( const Any& lhs, const T& rhs) { auto tmp = lhs; tmp -= rhs; return tmp; }
 
       /**
       * Binary arithmetic operators - substraction
@@ -919,7 +919,7 @@ namespace myodd {
       * @param const Any& the item we are multiplying from this.
       * @return Any *this*rhs
       */
-      template<class T> friend Any operator*(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp *= Any(rhs); return tmp; }
+      template<class T> friend Any operator*(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp *= rhs; return tmp; }
 
       /**
       * Binary arithmetic operators - multiplication
@@ -927,7 +927,7 @@ namespace myodd {
       * @param const Any& the item we are multiplying from this.
       * @return Any *this*rhs
       */
-      template<class T> friend Any operator*(const T& lhs, const Any& rhs) { auto tmp = Any(lhs); tmp *= rhs; return tmp; }
+      template<class T> friend Any operator*(const T& lhs, const Any& rhs) { auto tmp = rhs; tmp *= lhs; return tmp; }
 
       //
       // *operators
@@ -1114,7 +1114,7 @@ namespace myodd {
       * @param const Any& the item we are dividing from this.
       * @return Any *this / rhs
       */
-      template<class T> friend Any operator/(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp /= Any(rhs); return tmp; }
+      template<class T> friend Any operator/(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp /= rhs; return tmp; }
 
       /**
       * Binary arithmetic operators - division
