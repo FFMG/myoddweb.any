@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.4"
+#define MYODD_ANY_VERSION        "0.1.5"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001004 
+#define MYODD_ANY_VERSION_NUMBER 0001005 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
