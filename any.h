@@ -254,21 +254,59 @@ namespace myodd {
           //  null is not smaller than null
           return false;
         }
-
-        // is the lhs null?
-        if (Type() == dynamic::Misc_null)
+        
+        if (dynamic::is_type_floating(NumberType()) && dynamic::is_type_floating(rhs.NumberType()))
         {
-          return 0 < rhs._ldvalue;
+          // both are double.
+          return (_ldvalue < rhs._ldvalue);
         }
 
-        // is the rhs null?
-        if (rhs.Type() == dynamic::Misc_null)
+        if (dynamic::is_type_integer(NumberType()) && dynamic::is_type_floating(rhs.NumberType()))
         {
-          return _ldvalue < 0;
+          // one is integer, the other is double
+          if (UseUnsignedInteger())
+          {
+            return ((unsigned long long int)_llivalue < rhs._ldvalue);
+          }
+          return (_llivalue < rhs._ldvalue);
         }
 
-        // neither values are null
-        return (_ldvalue < rhs._ldvalue);
+        if (dynamic::is_type_floating(NumberType()) && dynamic::is_type_integer(rhs.NumberType()))
+        {
+          // one is double, the other is integer.
+          if (rhs.UseUnsignedInteger())
+          {
+            return (_ldvalue < (unsigned long long int)rhs._llivalue);
+          }
+          return (_ldvalue < rhs._llivalue);
+        }
+
+        // both are integer
+        if (UseUnsignedInteger() && rhs.UseUnsignedInteger())
+        {
+          return ( (unsigned long long int)_llivalue < (unsigned long long int)rhs._llivalue);
+        }
+        if (UseUnsignedInteger() && rhs.UseSignedInteger())
+        {
+          if (rhs._llivalue < 0)
+          {
+            // as the other is unsigned, *this cannot be less
+            return false;
+          }
+          // cast them both to remove warnings.
+          return ((unsigned long long int)_llivalue < (unsigned long long int)rhs._llivalue);
+        }
+        if (UseSignedInteger() && rhs.UseUnsignedInteger())
+        {
+          if (_llivalue < 0)
+          {
+            // as the other is unsigned, *this has to be less
+            return true;
+          }
+          // cast them both to remove warnings.
+          return ((unsigned long long int)_llivalue < (unsigned long long int)rhs._llivalue);
+        }
+        return (_llivalue < rhs._llivalue);
       }
 
       /**
@@ -292,7 +330,7 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      bool operator> (const Any& rhs) const { return !(rhs < *this || rhs == *this); }
+      bool operator> (const Any& rhs) const { return !(*this < rhs || *this == rhs); }
 
       /**
       * Relational operator greater than
@@ -300,7 +338,7 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return !(rhs <= Any(lhs)); }
+      template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return !(Any(lhs) <= rhs); }
 
       /**
       * Relational operator greater than
@@ -308,7 +346,7 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      template<class T>  friend bool operator> (const Any& lhs, const T& rhs) { return !(Any(rhs) <= lhs); }
+      template<class T>  friend bool operator> (const Any& lhs, const T& rhs) { return !(lhs <= Any(rhs)); }
 
       /**
       * Relational operator less or equal than
@@ -1080,6 +1118,12 @@ namespace myodd {
       */
       dynamic::Type NumberType() const
       {
+        //  if it is not a character then just use whatever we have
+        if (dynamic::is_type_null(Type()))
+        {
+          return dynamic::Integer_int;
+        }
+
         //  if it is not a character then just use whatever we have
         if (!dynamic::is_type_character(Type()))
         {
