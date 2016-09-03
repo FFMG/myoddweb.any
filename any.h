@@ -463,7 +463,15 @@ namespace myodd {
       * @param const Any& the item we are adding to this.
       * @return Any *this+rhs
       */
-      template<class T> friend Any operator+(Any lhs, const T& rhs) { lhs += rhs; return lhs; }
+      template<class T> friend Any operator+(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp += rhs; return tmp; }
+
+      /**
+      * Binary arithmetic operators - addition
+      * @param Any the item we are adding to this.
+      * @param const Any& the item we are adding to this.
+      * @return Any *this+rhs
+      */
+      template<class T> friend Any operator+(const T& lhs, const Any& rhs) { auto tmp = Any(lhs); tmp += rhs; return tmp; }
 
       /**
       * Add one to the current value.
@@ -685,7 +693,15 @@ namespace myodd {
       * @param const Any& the item we are subtracting from *this.
       * @return Any *this-rhs
       */
-      template<class T> friend Any operator-(Any lhs, const T& rhs) { lhs -= rhs; return lhs; }
+      template<class T> friend Any operator-( const Any& lhs, const T& rhs) { auto tmp = lhs; tmp -= Any(rhs); return tmp; }
+
+      /**
+      * Binary arithmetic operators - substraction
+      * @param Any the item we are subtracting from *this.
+      * @param const Any& the item we are subtracting from *this.
+      * @return Any *this-rhs
+      */
+      template<class T> friend Any operator-(const T& lhs, const Any& rhs) { auto tmp = Any(lhs); tmp -= rhs; return tmp; }
 
       /**
       * substract one from the current value.
@@ -903,7 +919,15 @@ namespace myodd {
       * @param const Any& the item we are multiplying from this.
       * @return Any *this*rhs
       */
-      template<class T> friend Any operator*(Any lhs, const T& rhs) { lhs *= rhs; return lhs; }
+      template<class T> friend Any operator*(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp *= Any(rhs); return tmp; }
+
+      /**
+      * Binary arithmetic operators - multiplication
+      * @param Any the item we are multiplying from this.
+      * @param const Any& the item we are multiplying from this.
+      * @return Any *this*rhs
+      */
+      template<class T> friend Any operator*(const T& lhs, const Any& rhs) { auto tmp = Any(lhs); tmp *= rhs; return tmp; }
 
       //
       // *operators
@@ -1090,8 +1114,15 @@ namespace myodd {
       * @param const Any& the item we are dividing from this.
       * @return Any *this / rhs
       */
-      template<class T> friend Any operator/(Any lhs, const T& rhs) { lhs /= Any(rhs); return lhs; }
+      template<class T> friend Any operator/(const Any& lhs, const T& rhs) { auto tmp = lhs; tmp /= Any(rhs); return tmp; }
 
+      /**
+      * Binary arithmetic operators - division
+      * @param Any the item we are dividing from this.
+      * @param const Any& the item we are dividing from this.
+      * @return Any *this / rhs
+      */
+      template<class T> friend Any operator/(const T& lhs, const Any& rhs) { auto tmp = Any(lhs); tmp /= rhs; return tmp; }
       //
       // /operators
       //
