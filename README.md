@@ -287,8 +287,8 @@ Those objects cannot have arithmetic done to them, (+,-,/,*)
 - <strike>Removed new/delete of `long long int` and `long double` as it is slow(er) and been on the stack is often better.</strike> *(done 24/08/2016)*
 - <strike>Assign `std::string` and `std::wstring`  
 myodd::dynamic::And( std::string("Hello") );</strike> *(done 25/08/2016)*
-- Add the ! operator, (the logical negation operator).
-- Manage [arithmetic conversions](http://stackoverflow.com/a/4814901/4584436) properly [[1]](http://en.cppreference.com/w/cpp/language/operator_arithmetic#Conversions)[[2]](https://docs.oracle.com/cd/E19205-01/819-5265/bjabw/index.html).
+- <strike>Add the ! operator, (the logical negation operator).</strike>*(done 01/09/2016)*
+- <strike>Manage [arithmetic conversions](http://stackoverflow.com/a/4814901/4584436) properly [[1]](http://en.cppreference.com/w/cpp/language/operator_arithmetic#Conversions)[[2]](https://docs.oracle.com/cd/E19205-01/819-5265/bjabw/index.html).</strike>*(done 03/09/2016)*
 - Create sample projects
 	- vs2015
 	- gcc

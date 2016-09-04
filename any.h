@@ -42,7 +42,8 @@
 #include <codecvt>        //  string <-> wstring
 #include <stdlib.h>       //  std::strtoll / std::strtoull
 #include <type_traits>    //  std::is_trivially_copyable
-//  std::is_pointer
+                          //  std::is_pointer
+#include <memory>         //  std::unique_ptr
 
 #include "types.h"        // data type
 
@@ -75,7 +76,7 @@ namespace myodd {
       * @param T value the value we want to copy/set
       */
       template<class T>
-      Any(T value) :
+      Any(const T& value) :
         Any()
       {
         CreateFrom(value);
@@ -121,6 +122,116 @@ namespace myodd {
 
         // return it.
         return value;
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator bool() const 
+      { 
+        // cast *this to value
+        return CastToBool();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator float() const
+      {
+        // cast *this to value
+        return CastToFloat();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator int() const
+      {
+        // cast *this to value
+        return CastToInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator short int() const
+      {
+        // cast *this to value
+        return CastToShortInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator unsigned short int() const
+      {
+        // cast *this to value
+        return CastToUnsignedShortInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator unsigned int() const
+      {
+        // cast *this to value
+        return CastToUnsignedInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator long int() const
+      {
+        // cast *this to value
+        return CastToLongInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator unsigned long int() const
+      {
+        // cast *this to value
+        return CastToUnsignedLongInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator long long int() const
+      {
+        // cast *this to value
+        return CastToLongLongInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator unsigned long long int() const
+      {
+        // cast *this to value
+        return CastToUnsignedLongLongInt();
       }
 
       /**
@@ -1391,7 +1502,7 @@ namespace myodd {
           return 0;
 
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -1582,7 +1693,7 @@ namespace myodd {
         case dynamic::Misc_unknown:
           // Objects of trivially - copyable types are the only C++ objects that 
           // may be safely copied with std::memcpy
-          CreateFromTrivial(value);
+          CreateFromUnknown(value);
 
           // done
           return;
@@ -1613,7 +1724,10 @@ namespace myodd {
         // if unknown try and set is as a pointer.
         if (_type == dynamic::Misc_unknown)
         {
-          CreateFromTrivial<T*>(value);
+          // create from an unknown pointer type.
+          CreateFromUnknown<T*>(value);
+
+          // we are done
           return;
         }
 
@@ -2010,12 +2124,87 @@ namespace myodd {
       }
 
       /**
+      * Create from an unknown type.
+      * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
+      * @param const T& trivial the structure/class we want to copy from.
+      */
+      template<class T>
+      std::enable_if_t<!std::is_pointer<T>::value> CreateFromUnknown(const T& unknown )
+      {
+        // as it is not a pointer value, it has to be trivially copyable.
+        if (std::is_trivially_copyable<T>::value)
+        {
+          // trivial value
+          CreateFromTrivial(unknown);
+
+          // done
+          return;
+        }
+
+        if (std::is_copy_constructible<T>::value)
+        {
+          //  copy construct the value.
+          CreateFromCopyConstructible(unknown);
+
+          // done
+          return;
+        }
+
+        // not sure what it is.
+        throw std::bad_cast();
+      }
+
+      /**
+      * Create from an unknown type.
+      * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
+      * @param const T& trivial the structure/class we want to copy from.
+      */
+      template<class T>
+      std::enable_if_t<std::is_pointer<T>::value> CreateFromUnknown(const T& unknown )
+      {
+        // it is a pointer, so it is an unknown pointer.
+        CreateFromUnknownPtr(unknown );
+      }
+
+      /**
+      * This function should never be called by a non copy constructible T.
+      * But the compiler needs a placeholder function.
+      * @param const T& copy the structure/class we want to copy from.
+      */
+      template<class T>
+      std::enable_if_t<!std::is_copy_constructible<T>::value> CreateFromCopyConstructible(const T& copy)
+      {
+        throw std::bad_cast();
+      }
+
+      /**
+      * Create from a copy constructible value.
+      * @param const T& copy the structure/class we want to copy from.
+      */
+      template<class T>
+      std::enable_if_t<std::is_copy_constructible<T>::value> CreateFromCopyConstructible(const T& copy )
+      {
+        // clear all the values.
+        CleanValues();
+
+        // set the type
+        _type = dynamic::Misc_copy;
+
+        // set the values.
+        _llivalue = 0;
+        _ldvalue = 0;
+
+        // copy the trival value.
+        _unkvalue = std::unique_ptr<UnknownItemBase>(new UnknownItem<typename std::remove_pointer<T>::type>(copy));
+      }
+
+      /**
       * Create from a trivally copyable value.
       * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
       * @param const T& trivial the structure/class we want to copy from.
       */
       template<class T>
-      std::enable_if_t<!std::is_pointer<T>::value> CreateFromTrivial(T trivial)
+      void CreateFromTrivial( const T& trivial)
       {
         // as it is not a pointer value, it has to be trivially copyable.
         if (!std::is_trivially_copyable<T>::value)
@@ -2046,13 +2235,13 @@ namespace myodd {
       * @param const T& trivial the structure/class we want to copy from.
       */
       template<class T>
-      std::enable_if_t<std::is_pointer<T>::value> CreateFromTrivial(const T& trivial)
+      void CreateFromUnknownPtr(const T& trivial)
       {
         // clear all the values.
         CleanValues();
 
         // set the type
-        _type = dynamic::Misc_trivial_ptr;
+        _type = dynamic::Misc_unknown_ptr;
 
         // set the values.
         _llivalue = 0;
@@ -2320,7 +2509,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           CastToTrivial(value);
           break;
 
@@ -2336,9 +2525,11 @@ namespace myodd {
       * Cast this to a fundamental type
       * @return short int the value.
       */
-      void CastTo(float& value) const
+      float CastToFloat() const
       {
+        float value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
@@ -2363,72 +2554,88 @@ namespace myodd {
       * Cast this to a fundamental type
       * @return short int the value.
       */
-      void CastTo(short int& value) const
+      short int CastToShortInt() const
       {
+        short int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return unsigned short int the value.
       */
-      void CastTo(unsigned short int& value) const
+      unsigned short int CastToUnsignedShortInt() const
       {
+        unsigned short int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return int the value.
       */
-      void CastTo(int& value) const
+      int CastToInt() const
       {
+        int value = 0;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return unsigned int the value.
       */
-      void CastTo(unsigned int& value) const
+      unsigned int CastToUnsignedInt() const
       {
+        unsigned int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return long the value.
       */
-      void CastTo(long int& value) const
+      long int CastToLongInt() const
       {
+        long int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return unsigned long the value.
       */
-      void CastTo(unsigned long int& value) const
+      unsigned long int CastToUnsignedLongInt() const
       {
+        unsigned long int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return long long the value.
       */
-      void CastTo(long long int& value) const
+      long long int CastToLongLongInt() const
       {
+        long long int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return unsigned long long the value.
       */
-      void CastTo(unsigned long long int& value) const
+      unsigned long long int CastToUnsignedLongLongInt() const
       {
+        unsigned long long int value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
@@ -2533,7 +2740,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2571,7 +2778,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2609,7 +2816,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2647,7 +2854,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2681,18 +2888,17 @@ namespace myodd {
       * we have a specialised function as casting to bool can be inefficent.
       * @return bool the value we are looking for.
       */
-      void CastTo(bool& value) const
+      bool CastToBool() const
       {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
           // null is false/
-          value = false;
-          return;
+          return false;
 
         case dynamic::Misc_unknown:
         case dynamic::Boolean_bool:
@@ -2721,14 +2927,9 @@ namespace myodd {
         // if we were using the long long int then we would only have 0
         if (dynamic::is_type_floating(NumberType()))
         {
-          value = (_ldvalue != 0);
+          return (_ldvalue != 0);
         }
-        else
-        {
-          // but we use the int if we are told to
-          // in case the long double is not valid.
-          value = (_llivalue != 0);
-        }
+        return  (_llivalue != 0);
       }
 
       /**
@@ -2812,7 +3013,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2872,7 +3073,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2935,7 +3136,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -3018,7 +3219,7 @@ namespace myodd {
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_wchar_t:
         case dynamic::Integer_short_int:
@@ -3133,7 +3334,7 @@ namespace myodd {
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -3171,7 +3372,7 @@ namespace myodd {
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -3338,7 +3539,7 @@ namespace myodd {
         switch (Type())
         {
         case dynamic::Misc_trivial:
-        case dynamic::Misc_trivial_ptr:
+        case dynamic::Misc_unknown_ptr:
           // trivial
           return true;
 
@@ -3551,6 +3752,27 @@ namespace myodd {
           }
         }
       }
+
+      struct UnknownItemBase
+      {
+        virtual ~UnknownItemBase() { }
+      };
+
+      template <class T>
+      struct UnknownItem : UnknownItemBase
+      {
+        UnknownItem(T value) : _value( nullptr )
+        {
+          _value = new T(value);
+        }
+        ~UnknownItem()
+        {
+          delete _value;
+        }
+        T* _value;
+      };
+
+      std::unique_ptr<UnknownItemBase> _unkvalue;
 
       // the biggest integer value.
       long long int _llivalue;

@@ -36,7 +36,8 @@ namespace myodd {
 
       // std::is_trivially_copyable == true
       Misc_trivial,
-      Misc_trivial_ptr,
+      Misc_copy,
+      Misc_unknown_ptr,
 
       // bool
       Boolean_bool,
@@ -81,7 +82,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
-      case Misc_trivial_ptr:
+      case Misc_unknown_ptr:
       case Boolean_bool:
       case Integer_short_int:
       case Integer_unsigned_short_int:
@@ -119,7 +120,7 @@ namespace myodd {
       case Character_char:
       case Character_wchar_t:
       case Misc_trivial:
-      case Misc_trivial_ptr:
+      case Misc_unknown_ptr:
       case Boolean_bool:
       case Integer_short_int:
       case Integer_unsigned_short_int:
@@ -153,7 +154,7 @@ namespace myodd {
 
       case Misc_unknown:
       case Misc_trivial:
-      case Misc_trivial_ptr:
+      case Misc_unknown_ptr:
       case Boolean_bool:
       case Character_signed_char:
       case Character_unsigned_char:
@@ -192,7 +193,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
-      case Misc_trivial_ptr:
+      case Misc_unknown_ptr:
       case Character_signed_char:
       case Character_unsigned_char:
       case Character_char:
@@ -232,7 +233,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
-      case Misc_trivial_ptr:
+      case Misc_unknown_ptr:
       case Boolean_bool:
       case Character_signed_char:
       case Character_unsigned_char:
@@ -275,7 +276,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
-      case Misc_trivial_ptr:
+      case Misc_unknown_ptr:
       case Boolean_bool:
       case Character_signed_char:
       case Character_unsigned_char:
