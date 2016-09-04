@@ -82,6 +82,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
+      case Misc_copy:
       case Misc_unknown_ptr:
       case Boolean_bool:
       case Integer_short_int:
@@ -120,6 +121,7 @@ namespace myodd {
       case Character_char:
       case Character_wchar_t:
       case Misc_trivial:
+      case Misc_copy:
       case Misc_unknown_ptr:
       case Boolean_bool:
       case Integer_short_int:
@@ -154,6 +156,7 @@ namespace myodd {
 
       case Misc_unknown:
       case Misc_trivial:
+      case Misc_copy:
       case Misc_unknown_ptr:
       case Boolean_bool:
       case Character_signed_char:
@@ -193,6 +196,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
+      case Misc_copy:
       case Misc_unknown_ptr:
       case Character_signed_char:
       case Character_unsigned_char:
@@ -233,6 +237,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
+      case Misc_copy:
       case Misc_unknown_ptr:
       case Boolean_bool:
       case Character_signed_char:
@@ -276,6 +281,7 @@ namespace myodd {
       case Misc_unknown:
       case Misc_null:
       case Misc_trivial:
+      case Misc_copy:
       case Misc_unknown_ptr:
       case Boolean_bool:
       case Character_signed_char:

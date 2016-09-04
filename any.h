@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.6"
+#define MYODD_ANY_VERSION        "0.1.7"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001006 
+#define MYODD_ANY_VERSION_NUMBER 0001007 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -3334,6 +3334,7 @@ namespace myodd {
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
         case dynamic::Misc_trivial:
+        case dynamic::Misc_copy:
         case dynamic::Misc_unknown_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
@@ -3372,6 +3373,7 @@ namespace myodd {
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
         case dynamic::Misc_trivial:
+        case dynamic::Misc_copy:
         case dynamic::Misc_unknown_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
