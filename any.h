@@ -151,6 +151,28 @@ namespace myodd {
       * @see CastTo
       * @return T the template operator.
       */
+      operator double() const
+      {
+        // cast *this to value
+        return CastToDouble();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator long double() const
+      {
+        // cast *this to value
+        return CastToLongDouble();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
       operator int() const
       {
         // cast *this to value
@@ -232,6 +254,94 @@ namespace myodd {
       {
         // cast *this to value
         return CastToUnsignedLongLongInt();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator char*() const
+      {
+        // cast *this to value
+        return CastToChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator const char*() const
+      {
+        // cast *this to value
+        return CastToChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator const unsigned char*() const
+      {
+        // cast *this to value
+        return CastToUnsignedChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator const signed char*() const
+      {
+        // cast *this to value
+        return CastToSignedChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator signed char*() const
+      {
+        // cast *this to value
+        return CastToSignedChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator unsigned char*() const
+      {
+        // cast *this to value
+        return CastToUnsignedChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator const wchar_t*() const
+      {
+        // cast *this to value
+        return CastToWideChar();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator wchar_t*() const
+      {
+        // cast *this to value
+        return CastToWideChar();
       }
 
       /**
@@ -2536,18 +2646,22 @@ namespace myodd {
       * Cast this to a fundamental type
       * @return double the value.
       */
-      void CastTo(double& value) const
+      double CastToDouble() const
       {
+        double value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
       * Cast this to a fundamental type
       * @return long double the value.
       */
-      void CastTo(long double& value) const
+      long double CastToLongDouble() const
       {
+        long double value;
         CastToFundamental(value);
+        return value;
       }
 
       /**
@@ -2642,84 +2756,40 @@ namespace myodd {
       * Try and cast this to a posible value.
       * @return char* the value we are looking for.
       */
-      void CastTo(char*& value) const
+      char* CastToChar() const
       {
+        char* value;
         CastToCharacters(value);
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @param const signed char* value the value we are looking for.
-      */
-      void CastTo(const signed char*& value) const
-      {
-        char* c = nullptr;
-        CastToCharacters(c);
-        value = const_cast<const signed char*>((signed char*)c);
+        return value;
       }
 
       /**
       * Try and cast this to a posible value.
       * @param signed char* value the value we are looking for.
       */
-      void CastTo(signed char*& value) const
+      signed char* CastToSignedChar() const
       {
-        char* c = nullptr;
-        CastToCharacters(c);
-        value = (signed char*)c;
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @param const unsigned char* value the value we are looking for.
-      */
-      void CastTo(const unsigned char*& value) const
-      {
-        char* c = nullptr;
-        CastToCharacters(c);
-        value = const_cast<const unsigned char*>((unsigned char*)c);
+        return (signed char*)CastToChar();
       }
 
       /**
       * Try and cast this to a posible value.
       * @param unsigned char* value the value we are looking for.
       */
-      void CastTo(unsigned char*& value) const
+      unsigned char* CastToUnsignedChar() const
       {
-        char* c = nullptr;
-        CastToCharacters(c);
-        value = (unsigned char*)c;
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @param const char* value the value we are looking for.
-      */
-      void CastTo(const char*& value) const
-      {
-        char* c = nullptr;
-        CastToCharacters(c);
-        value = c;
+        return (unsigned char*)CastToChar();
       }
 
       /**
       * Try and cast this to a posible value.
       * @return wchar_t* the value we are looking for.
       */
-      void CastTo(wchar_t*& value) const
+      wchar_t* CastToWideChar() const
       {
+        wchar_t* value;
         CastToCharacters(value);
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @param wchar_t* value the value we are looking for.
-      */
-      void CastTo(const wchar_t*& value) const
-      {
-        wchar_t* wc = nullptr;
-        CastToCharacters(wc);
-        value = wc;
+        return value;
       }
 
       /**
