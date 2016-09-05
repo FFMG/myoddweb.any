@@ -63,7 +63,8 @@ namespace myodd {
         _stringStatus(StringStatus_Not_A_Number),
         _svalue(nullptr),
         _swvalue(nullptr),
-        _type(Type::Misc_null)
+        _type(Type::Misc_null),
+        _unkvalue( nullptr )
       {
       }
 
@@ -111,14 +112,7 @@ namespace myodd {
       */
       template<class T>
       operator T() const {
-        // the return value
-        T value;
-
-        // cast *this to value
-        CastTo(value);
-
-        // return it.
-        return value;
+        return CastToCopy<T>();
       }
 
       template<class T>
@@ -420,6 +414,13 @@ namespace myodd {
 
           // long double
           _ldvalue = other._ldvalue;
+
+          // copy the unknown type
+          if (other._unkvalue)
+          {
+            ++other._unkvalue->_counter;
+            _unkvalue = other._unkvalue;
+          }
           
           // copy the character value
           if (other._lcvalue > 0 && other._cvalue)
@@ -2332,7 +2333,7 @@ namespace myodd {
         _ldvalue = 0;
 
         // copy the trival value.
-        _unkvalue = std::unique_ptr<UnknownItemBase>(new UnknownItem<typename std::remove_pointer<T>::type>(copy));
+        _unkvalue = new UnknownItem<typename std::remove_pointer<T>::type>(copy);
       }
 
       /**
@@ -2354,7 +2355,7 @@ namespace myodd {
         _ldvalue = 0;
 
         // copy the trival pointer value that was given to us.
-        _unkvalue = std::unique_ptr<UnknownItemBase>(new UnknownItem<T>(unkptr));
+        _unkvalue = new UnknownItem<T>(unkptr);
       }
 
       /**
@@ -3003,7 +3004,7 @@ namespace myodd {
           throw std::bad_cast();
         }
 
-        value = ((UnknownItem<T>*)_unkvalue.get())->Get();
+        value = _unkvalue->Get();
       }
 
       /**
@@ -3029,26 +3030,76 @@ namespace myodd {
           throw std::bad_cast();
         }
 
-        // get the unique pointer value.
-        auto unknownItemBase = _unkvalue.get();
-
         // are we a pointer or an actual value?
         if (Type() == dynamic::Misc_copy)
         {
           //  as we are not a pointer, we cannot use the pointer value.
-          auto unknownItem = reinterpret_cast<UnknownItem<typename std::remove_pointer<T>::type>*>(unknownItemBase);
+          auto unknownItem = reinterpret_cast<UnknownItem<typename std::remove_pointer<T>::type>*>(_unkvalue);
 
           // did the cast work?
           if (nullptr == unknownItem)
           {
             throw std::bad_cast();
           }
+
           // we want the address of what we know is a structure.
           return unknownItem->Get();
         }
 
         // get the item value
-        auto unknownItem = reinterpret_cast<UnknownItem<T>*>(unknownItemBase);
+        auto unknownItem = reinterpret_cast<UnknownItem<T>*>(_unkvalue);
+
+        // did the cast work?
+        if (nullptr == unknownItem)
+        {
+          throw std::bad_cast();
+        }
+
+        // we want the address of what we know is a pointer.
+        return *unknownItem->Get();
+      }
+
+      /**
+      * Cast this to a fundamental type
+      * @return short int the value.
+      */
+      template<class T, typename = std::enable_if_t< !std::is_pointer<T>::value> >
+      T CastToCopy() const
+      {
+        if (!IsTrivial())
+        {
+          // we cannot convert this to a trivial type.
+          throw std::bad_cast();
+        }
+
+        // we konw, that we handle certain pointers, (strings, ints etc)
+        // so there is no way that we can cast a trivial value to something
+        // we know it cannot be, only unknown types are 'trivial'
+        if (dynamic::Misc_unknown != dynamic::get_type< typename std::remove_pointer<T>::type >::value)
+        {
+          // we cannot cast to this T* as we know
+          // that it was not what it was created with, (as we handle known pointers).
+          throw std::bad_cast();
+        }
+
+        // are we a pointer or an actual value?
+        if (Type() == dynamic::Misc_copy)
+        {
+          //  as we are not a pointer, we cannot use the pointer value.
+          auto unknownItem = reinterpret_cast<UnknownItem<typename std::remove_pointer<T>::type>*>(_unkvalue);
+
+          // did the cast work?
+          if (nullptr == unknownItem)
+          {
+            throw std::bad_cast();
+          }
+
+          // we want the address of what we know is a structure.
+          return *unknownItem->Get();
+        }
+
+        // get the item value
+        auto unknownItem = reinterpret_cast<UnknownItem<T>*>(_unkvalue);
 
         // did the cast work?
         if (nullptr == unknownItem)
@@ -3358,6 +3409,16 @@ namespace myodd {
         delete _svalue;
         delete _swvalue;
 
+        // delete the unknown value
+        if (_unkvalue)
+        {
+          --_unkvalue->_counter;
+          if (0 == _unkvalue->_counter)
+          {
+            delete _unkvalue;
+          }
+        }
+
         // reset the values
         _llivalue = 0;
         _ldvalue = 0;
@@ -3365,6 +3426,7 @@ namespace myodd {
         _cvalue = nullptr;
         _svalue = nullptr;
         _swvalue = nullptr;
+        _unkvalue = nullptr;
       }
 
       /**
@@ -3806,13 +3868,15 @@ namespace myodd {
 
       struct UnknownItemBase
       {
+        UnknownItemBase() : _counter(1) {}
         virtual ~UnknownItemBase() { }
+        unsigned short _counter;
       };
 
       template <class T>
       struct UnknownItem : UnknownItemBase
       {
-        UnknownItem( const T& value) : _value( nullptr )
+        UnknownItem( const T& value) : UnknownItemBase(),  _value( nullptr )
         {
           _value = new T(value);
         }
@@ -3821,11 +3885,12 @@ namespace myodd {
           delete _value;
         }
         T* Get() const { return _value; }
+
       protected:
         T* _value;
       };
 
-      std::unique_ptr<UnknownItemBase> _unkvalue;
+      UnknownItemBase* _unkvalue;
 
       // the biggest integer value.
       long long int _llivalue;
