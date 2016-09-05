@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.7"
+#define MYODD_ANY_VERSION        "0.1.8"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001007 
+#define MYODD_ANY_VERSION_NUMBER 0001008 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -1802,6 +1802,18 @@ namespace myodd {
           // We cannot compare non trivials.
           throw std::bad_cast();
         }
+
+        // are they both trivial types?
+        if (lhs.Type() == dynamic::Misc_copy && rhs.Type() == dynamic::Misc_copy)
+        {
+          if (lhs._unkvalue->Size() != rhs._unkvalue->Size())
+          {
+            return 1;
+          }
+          return std::memcmp(lhs._unkvalue->Data(), rhs._unkvalue->Data(), lhs._unkvalue->Size());
+        }
+
+        // not sure how to compare those.
         throw std::bad_cast();
       }
 
@@ -3871,6 +3883,9 @@ namespace myodd {
         UnknownItemBase() : _counter(1) {}
         virtual ~UnknownItemBase() { }
         unsigned short _counter;
+
+        virtual void* Data() const = 0;
+        virtual size_t Size() const = 0;
       };
 
       template <class T>
@@ -3885,6 +3900,9 @@ namespace myodd {
           delete _value;
         }
         T* Get() const { return _value; }
+
+        virtual void* Data() const { return (void*)_value; }
+        virtual size_t Size() const { return sizeof(T); }
 
       protected:
         T* _value;
