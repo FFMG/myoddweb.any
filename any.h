@@ -264,7 +264,7 @@ namespace myodd {
       operator char*() const
       {
         // cast *this to value
-        return CastToChar();
+        return CastToChars();
       }
 
       /**
@@ -275,7 +275,7 @@ namespace myodd {
       operator const char*() const
       {
         // cast *this to value
-        return CastToChar();
+        return CastToChars();
       }
 
       /**
@@ -283,10 +283,10 @@ namespace myodd {
       * @see CastTo
       * @return T the template operator.
       */
-      operator const unsigned char*() const
+      operator char() const
       {
         // cast *this to value
-        return CastToUnsignedChar();
+        return CastToChar();
       }
 
       /**
@@ -297,7 +297,7 @@ namespace myodd {
       operator const signed char*() const
       {
         // cast *this to value
-        return CastToSignedChar();
+        return CastToSignedChars();
       }
 
       /**
@@ -306,6 +306,17 @@ namespace myodd {
       * @return T the template operator.
       */
       operator signed char*() const
+      {
+        // cast *this to value
+        return CastToSignedChars();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator signed char() const
       {
         // cast *this to value
         return CastToSignedChar();
@@ -319,6 +330,28 @@ namespace myodd {
       operator unsigned char*() const
       {
         // cast *this to value
+        return CastToUnsignedChars();
+      }
+      
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator const unsigned char*() const
+      {
+        // cast *this to value
+        return CastToUnsignedChars();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator unsigned char() const
+      {
+        // cast *this to value
         return CastToUnsignedChar();
       }
 
@@ -330,7 +363,7 @@ namespace myodd {
       operator const wchar_t*() const
       {
         // cast *this to value
-        return CastToWideChar();
+        return CastToWideChars();
       }
 
       /**
@@ -339,6 +372,17 @@ namespace myodd {
       * @return T the template operator.
       */
       operator wchar_t*() const
+      {
+        // cast *this to value
+        return CastToWideChars();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator wchar_t() const
       {
         // cast *this to value
         return CastToWideChar();
@@ -2756,7 +2800,7 @@ namespace myodd {
       * Try and cast this to a posible value.
       * @return char* the value we are looking for.
       */
-      char* CastToChar() const
+      char* CastToChars() const
       {
         char* value;
         CastToCharacters(value);
@@ -2767,25 +2811,25 @@ namespace myodd {
       * Try and cast this to a posible value.
       * @param signed char* value the value we are looking for.
       */
-      signed char* CastToSignedChar() const
+      signed char* CastToSignedChars() const
       {
-        return (signed char*)CastToChar();
+        return (signed char*)CastToChars();
       }
 
       /**
       * Try and cast this to a posible value.
       * @param unsigned char* value the value we are looking for.
       */
-      unsigned char* CastToUnsignedChar() const
+      unsigned char* CastToUnsignedChars() const
       {
-        return (unsigned char*)CastToChar();
+        return (unsigned char*)CastToChars();
       }
 
       /**
       * Try and cast this to a posible value.
       * @return wchar_t* the value we are looking for.
       */
-      wchar_t* CastToWideChar() const
+      wchar_t* CastToWideChars() const
       {
         wchar_t* value;
         CastToCharacters(value);
@@ -2796,16 +2840,16 @@ namespace myodd {
       * Try and cast this to a posible value.
       * @return wchar_t* the value we are looking for.
       */
-      void CastTo(std::wstring& value) const
+      std::wstring CastToWideString(std::wstring& value) const
       {
-        CastToCharacters(value);
+        return CastToWideChars();
       }
 
       /**
       * Try and cast this to a posible value.
       * @return char the value we are looking for.
       */
-      void CastTo(char& value) const
+      char CastToChar() const
       {
         switch (Type())
         {
@@ -2814,28 +2858,22 @@ namespace myodd {
           throw std::bad_cast();
 
         case dynamic::Misc_null:
-          value = '\0';
-          break;
+          return '\0';
 
         case dynamic::Character_wchar_t:
-          value = static_cast<char>(*(wchar_t*)_cvalue);
-          break;
+          return static_cast<char>(*(wchar_t*)_cvalue);
 
         case dynamic::Character_char:
-          value = static_cast<char>(*(char*)_cvalue);
-          break;
+          return static_cast<char>(*(char*)_cvalue);
 
         case dynamic::Character_signed_char:
-          value = static_cast<char>(*(signed char*)_cvalue);
-          break;
+          return static_cast<char>(*(signed char*)_cvalue);
 
         case dynamic::Character_unsigned_char:
-          value = static_cast<char>(*(unsigned char*)_cvalue);
-          break;
+          return static_cast<char>(*(unsigned char*)_cvalue);
 
         default:
-          value = static_cast<char>(_llivalue);
-          break;
+          return static_cast<char>(_llivalue);
         }
       }
 
@@ -2843,7 +2881,7 @@ namespace myodd {
       * Try and cast this to a posible value.
       * @return wchar_t the value we are looking for.
       */
-      void CastTo(wchar_t& value) const
+      wchar_t CastToWideChar() const
       {
         switch (Type())
         {
@@ -2852,27 +2890,59 @@ namespace myodd {
           throw std::bad_cast();
 
         case dynamic::Misc_null:
-          value = '\0';
+          return '\0';
+
+        case dynamic::Character_wchar_t:
+          return static_cast<wchar_t>(*(wchar_t*)_cvalue);
+
+        case dynamic::Character_char:
+          return static_cast<wchar_t>(*(char*)_cvalue);
+
+        case dynamic::Character_signed_char:
+          return static_cast<wchar_t>(*(signed char*)_cvalue);
+
+        case dynamic::Character_unsigned_char:
+          return static_cast<wchar_t>(*(unsigned char*)_cvalue);
+
+        default:
+          return static_cast<wchar_t>(_llivalue);
+        }
+      }
+
+      /**
+      * Try and cast this to a posible value.
+      * @return unsigned char the value we are looking for.
+      */
+      unsigned char CastToUnsignedChar() const
+      {
+        switch (Type())
+        {
+        case dynamic::Misc_trivial:
+        case dynamic::Misc_unknown_ptr:
+          throw std::bad_cast();
+
+        case dynamic::Misc_null:
+          return '\0';
           break;
 
         case dynamic::Character_wchar_t:
-          value = static_cast<wchar_t>(*(wchar_t*)_cvalue);
+          return static_cast<unsigned char>(*(wchar_t*)_cvalue);
           break;
 
         case dynamic::Character_char:
-          value = static_cast<wchar_t>(*(char*)_cvalue);
+          return static_cast<unsigned char>(*(char*)_cvalue);
           break;
 
         case dynamic::Character_signed_char:
-          value = static_cast<wchar_t>(*(signed char*)_cvalue);
+          return static_cast<unsigned char>(*(signed char*)_cvalue);
           break;
 
         case dynamic::Character_unsigned_char:
-          value = static_cast<wchar_t>(*(unsigned char*)_cvalue);
+          return static_cast<unsigned char>(*(unsigned char*)_cvalue);
           break;
 
         default:
-          value = static_cast<wchar_t>(_llivalue);
+          return static_cast<unsigned char>(_llivalue);
           break;
         }
       }
@@ -2881,7 +2951,7 @@ namespace myodd {
       * Try and cast this to a posible value.
       * @return unsigned char the value we are looking for.
       */
-      void CastTo(unsigned char& value) const
+      signed char CastToSignedChar() const
       {
         switch (Type())
         {
@@ -2890,66 +2960,22 @@ namespace myodd {
           throw std::bad_cast();
 
         case dynamic::Misc_null:
-          value = '\0';
-          break;
+          return '\0';
 
         case dynamic::Character_wchar_t:
-          value = static_cast<unsigned char>(*(wchar_t*)_cvalue);
-          break;
+          return static_cast<signed char>(*(wchar_t*)_cvalue);
 
         case dynamic::Character_char:
-          value = static_cast<unsigned char>(*(char*)_cvalue);
-          break;
+          return static_cast<signed char>(*(char*)_cvalue);
 
         case dynamic::Character_signed_char:
-          value = static_cast<unsigned char>(*(signed char*)_cvalue);
-          break;
+          return static_cast<signed char>(*(signed char*)_cvalue);
 
         case dynamic::Character_unsigned_char:
-          value = static_cast<unsigned char>(*(unsigned char*)_cvalue);
-          break;
+          return static_cast<signed char>(*(unsigned char*)_cvalue);
 
         default:
-          value = static_cast<unsigned char>(_llivalue);
-          break;
-        }
-      }
-
-      /**
-      * Try and cast this to a posible value.
-      * @return unsigned char the value we are looking for.
-      */
-      void CastTo(signed char& value) const
-      {
-        switch (Type())
-        {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
-          throw std::bad_cast();
-
-        case dynamic::Misc_null:
-          value = '\0';
-          break;
-
-        case dynamic::Character_wchar_t:
-          value = static_cast<signed char>(*(wchar_t*)_cvalue);
-          break;
-
-        case dynamic::Character_char:
-          value = static_cast<signed char>(*(char*)_cvalue);
-          break;
-
-        case dynamic::Character_signed_char:
-          value = static_cast<signed char>(*(signed char*)_cvalue);
-          break;
-
-        case dynamic::Character_unsigned_char:
-          value = static_cast<signed char>(*(unsigned char*)_cvalue);
-          break;
-
-        default:
-          value = static_cast<signed char>(_llivalue);
-          break;
+          return static_cast<signed char>(_llivalue);
         }
       }
 
