@@ -60,9 +60,6 @@ namespace myodd {
         _ldvalue(0),
         _cvalue(nullptr),
         _lcvalue(0),
-        _ptvalue(nullptr),
-        _tvalue(nullptr),
-        _ltvalue(0),
         _stringStatus(StringStatus_Not_A_Number),
         _svalue(nullptr),
         _swvalue(nullptr),
@@ -122,6 +119,12 @@ namespace myodd {
 
         // return it.
         return value;
+      }
+
+      template<class T>
+      operator T*()  const
+      {
+        return CastToCopyPtr<T*>();
       }
 
       /**
@@ -417,7 +420,7 @@ namespace myodd {
 
           // long double
           _ldvalue = other._ldvalue;
-
+          
           // copy the character value
           if (other._lcvalue > 0 && other._cvalue)
           {
@@ -426,18 +429,6 @@ namespace myodd {
             std::memset(_cvalue, '\0', _lcvalue);
             std::memcpy(_cvalue, other._cvalue, _lcvalue);
             _stringStatus = other._stringStatus;
-          }
-
-          // copy the trivial pointer
-          _ptvalue = other._ptvalue;
-
-          // copy the trivial value
-          if (other._ltvalue > 0 && other._tvalue)
-          {
-            _ltvalue = other._ltvalue;
-            _tvalue = new char[_ltvalue];
-            std::memset(_tvalue, '0', _ltvalue);
-            std::memcpy(_tvalue, other._tvalue, _ltvalue);
           }
         }
         return *this;
@@ -1655,8 +1646,8 @@ namespace myodd {
           // all the values should be the same but there is no point in checking.
           return 0;
 
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -1810,15 +1801,7 @@ namespace myodd {
           // We cannot compare non trivials.
           throw std::bad_cast();
         }
-
-        // are they the same size
-        if (lhs._ltvalue != rhs._ltvalue)
-        {
-          return 1;
-        }
-
-        // they look the same, so we can now compare them both,
-        return (std::memcmp(lhs._tvalue, rhs._tvalue, lhs._ltvalue) != 0 ? -1 : 0);
+        throw std::bad_cast();
       }
 
 #ifdef _MSC_VER
@@ -2285,19 +2268,19 @@ namespace myodd {
       template<class T>
       std::enable_if_t<!std::is_pointer<T>::value> CreateFromUnknown(const T& unknown )
       {
-        // as it is not a pointer value, it has to be trivially copyable.
-        if (std::is_trivially_copyable<T>::value)
+        if (std::is_copy_constructible<T>::value)
         {
-          // trivial value
-          CreateFromTrivial(unknown);
+          //  copy construct the value.
+          CreateFromCopyConstructible(unknown);
 
           // done
           return;
         }
 
-        if (std::is_copy_constructible<T>::value)
+        // as it is not a pointer value, it has to be trivially copyable.
+        if (std::is_trivially_copyable<T>::value)
         {
-          //  copy construct the value.
+          // trivial value
           CreateFromCopyConstructible(unknown);
 
           // done
@@ -2358,51 +2341,20 @@ namespace myodd {
       * @param const T& trivial the structure/class we want to copy from.
       */
       template<class T>
-      void CreateFromTrivial( const T& trivial)
-      {
-        // as it is not a pointer value, it has to be trivially copyable.
-        if (!std::is_trivially_copyable<T>::value)
-        {
-          throw std::bad_cast();
-        }
-
-        // clear all the values.
-        CleanValues();
-
-        // set the type
-        _type = dynamic::Misc_trivial;
-
-        // set the values.
-        _llivalue = 0;
-        _ldvalue = 0;
-
-        // copy the trival value.
-        _ltvalue = sizeof(T);
-        _tvalue = new char[_ltvalue];
-        std::memset(_tvalue, 0, _ltvalue);
-        std::memcpy(_tvalue, &trivial, _ltvalue);
-      }
-
-      /**
-      * Create from a trivally copyable value.
-      * Objects of trivially - copyable types are the only C++ objects that may be safely copied with std::memcpy
-      * @param const T& trivial the structure/class we want to copy from.
-      */
-      template<class T>
-      void CreateFromUnknownPtr(const T& trivial)
+      void CreateFromUnknownPtr(const T& unkptr)
       {
         // clear all the values.
         CleanValues();
 
         // set the type
-        _type = dynamic::Misc_unknown_ptr;
+        _type = dynamic::Misc_copy_ptr;
 
         // set the values.
         _llivalue = 0;
         _ldvalue = 0;
 
         // copy the trival pointer value that was given to us.
-        _ptvalue = (void*)trivial;
+        _unkvalue = std::unique_ptr<UnknownItemBase>(new UnknownItem<T>(unkptr));
       }
 
       /**
@@ -2662,9 +2614,9 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
-          CastToTrivial(value);
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
+          throw std::bad_cast();
           break;
 
           // none of the fundamental types are handled here.
@@ -2853,8 +2805,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2885,8 +2837,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2917,8 +2869,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2955,8 +2907,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -2988,8 +2940,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -3045,28 +2997,21 @@ namespace myodd {
         // As we are looking for the non pointer value we can 
         // only return the non pointer version of the trivial
         // we cannot cast our pointer into whatever decltype(T) was passed to us.
-        if (Type() != dynamic::Misc_trivial)
+        if (Type() != dynamic::Misc_copy)
         {
           // we cannot convert this to a trivial type.
           throw std::bad_cast();
         }
 
-        // can we fit our data exactly inside the structure that they are trying to make us use.
-        if (sizeof(T) != _ltvalue)
-        {
-          throw std::bad_cast();
-        }
-
-        // copy the trival value.
-        std::memcpy(&value, _tvalue, _ltvalue);
+        value = ((UnknownItem<T>*)_unkvalue.get())->Get();
       }
 
       /**
       * Cast this to a fundamental type
       * @return short int the value.
       */
-      template<class T>
-      std::enable_if_t<std::is_pointer<T>::value> CastToTrivial(T& value) const
+      template<class T, typename = std::enable_if_t< std::is_pointer<T>::value> >
+      T CastToCopyPtr() const
       {
         if (!IsTrivial())
         {
@@ -3084,19 +3029,35 @@ namespace myodd {
           throw std::bad_cast();
         }
 
-        // are _we_ a non pointer trivial?
-        // in that case we can return our address.
-        // the user should not be allowed to delete
-        //  it as they did not create this value.
-        if (dynamic::Misc_trivial == Type())
+        // get the unique pointer value.
+        auto unknownItemBase = _unkvalue.get();
+
+        // are we a pointer or an actual value?
+        if (Type() == dynamic::Misc_copy)
         {
-          value = (T)_tvalue;
+          //  as we are not a pointer, we cannot use the pointer value.
+          auto unknownItem = reinterpret_cast<UnknownItem<typename std::remove_pointer<T>::type>*>(unknownItemBase);
+
+          // did the cast work?
+          if (nullptr == unknownItem)
+          {
+            throw std::bad_cast();
+          }
+          // we want the address of what we know is a structure.
+          return unknownItem->Get();
         }
-        else
+
+        // get the item value
+        auto unknownItem = reinterpret_cast<UnknownItem<T>*>(unknownItemBase);
+
+        // did the cast work?
+        if (nullptr == unknownItem)
         {
-          // we are a pointer value so we can return it.
-          value = (T)_ptvalue;
+          throw std::bad_cast();
         }
+
+        // we want the address of what we know is a pointer.
+        return *unknownItem->Get();
       }
 
       /**
@@ -3108,8 +3069,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -3168,8 +3129,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -3231,8 +3192,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
         case dynamic::Misc_null:
@@ -3314,8 +3275,8 @@ namespace myodd {
 
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_wchar_t:
         case dynamic::Integer_short_int:
@@ -3390,9 +3351,6 @@ namespace myodd {
       */
       void CleanValues()
       {
-        // delete the trivial value
-        delete _tvalue;
-
         // delete the char if need be
         delete _cvalue;
 
@@ -3404,12 +3362,9 @@ namespace myodd {
         _llivalue = 0;
         _ldvalue = 0;
         _lcvalue = 0;
-        _ltvalue = 0;
         _cvalue = nullptr;
         _svalue = nullptr;
         _swvalue = nullptr;
-        _tvalue = nullptr;
-        _ptvalue = nullptr;
       }
 
       /**
@@ -3429,9 +3384,8 @@ namespace myodd {
 
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
-        case dynamic::Misc_trivial:
         case dynamic::Misc_copy:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -3468,9 +3422,8 @@ namespace myodd {
 
         case dynamic::Misc_unknown:
         case dynamic::Misc_null:
-        case dynamic::Misc_trivial:
         case dynamic::Misc_copy:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy_ptr:
         case dynamic::Boolean_bool:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -3636,8 +3589,8 @@ namespace myodd {
       {
         switch (Type())
         {
-        case dynamic::Misc_trivial:
-        case dynamic::Misc_unknown_ptr:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
           // trivial
           return true;
 
@@ -3859,7 +3812,7 @@ namespace myodd {
       template <class T>
       struct UnknownItem : UnknownItemBase
       {
-        UnknownItem(T value) : _value( nullptr )
+        UnknownItem( const T& value) : _value( nullptr )
         {
           _value = new T(value);
         }
@@ -3867,6 +3820,8 @@ namespace myodd {
         {
           delete _value;
         }
+        T* Get() const { return _value; }
+      protected:
         T* _value;
       };
 
@@ -3881,10 +3836,6 @@ namespace myodd {
       // this is the given character value either char/signed char/unsigned char/wide
       char* _cvalue;
       size_t _lcvalue;
-
-      void* _ptvalue;
-      char* _tvalue;
-      size_t _ltvalue;
 
       // the status of the string.
       StringStatus _stringStatus;
