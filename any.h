@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.8"
+#define MYODD_ANY_VERSION        "0.1.9"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001008 
+#define MYODD_ANY_VERSION_NUMBER 0001009 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -56,6 +56,7 @@ namespace myodd {
       * default constructor.
       */
       Any() :
+        _unkvalue(nullptr),
         _llivalue(0),
         _ldvalue(0),
         _cvalue(nullptr),
@@ -63,8 +64,7 @@ namespace myodd {
         _stringStatus(StringStatus_Not_A_Number),
         _svalue(nullptr),
         _swvalue(nullptr),
-        _type(Type::Misc_null),
-        _unkvalue( nullptr )
+        _type(Type::Misc_null)
       {
       }
 
@@ -2991,32 +2991,6 @@ namespace myodd {
           return (_ldvalue != 0);
         }
         return  (_llivalue != 0);
-      }
-
-      /**
-      * Cast this to a fundamental type
-      * @return short int the value.
-      */
-      template<class T>
-      std::enable_if_t<!std::is_pointer<T>::value> CastToTrivial(T& value) const
-      {
-        // as it is not a pointer, it has to be trivially copyable.
-        if (!std::is_trivially_copyable<T>::value)
-        {
-          // we cannot convert this T to a trivial type.
-          throw std::bad_cast();
-        }
-
-        // As we are looking for the non pointer value we can 
-        // only return the non pointer version of the trivial
-        // we cannot cast our pointer into whatever decltype(T) was passed to us.
-        if (Type() != dynamic::Misc_copy)
-        {
-          // we cannot convert this to a trivial type.
-          throw std::bad_cast();
-        }
-
-        value = _unkvalue->Get();
       }
 
       /**
