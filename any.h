@@ -1673,11 +1673,20 @@ namespace myodd {
         }
 
         // are we comparing trivial structures
-        if (lhs.IsTrivial() || rhs.IsTrivial())
+        if (dynamic::is_type_copy(lhs.Type()) || dynamic::is_type_copy(rhs.Type()))
         {
-          return CompareTrivial(lhs, rhs);
+          return CompareCopy(lhs, rhs);
         }
+        return CompareDefault(lhs, rhs);
+      }
 
+      /**
+      * Do a default compare of string or fundamental types.
+      * @throw if we are unable to compare, (not same types, not same sizes etc...)
+      * @return short 0 if they are the same or -1 if not.
+      */
+      static short CompareDefault(const Any& lhs, const Any& rhs)
+      {
         //  find the 'common' type
         // in the case of 2 characters we could end up comparing 2xzeros
         // but it is fine as we will compare them further later.
@@ -1759,33 +1768,52 @@ namespace myodd {
           throw std::bad_cast();
         }
 
-        //  if they are both characters then we need to test further.
+        // if we made it this far they are both the same
+        // but if they are boith strings and they do not represent numbers
+        // then we need to compare the string values.
         if (dynamic::is_type_character(lhs.Type()) && dynamic::is_type_character(rhs.Type()) &&
           (!lhs.IsStringNumber(false) || !rhs.IsStringNumber(false)))
         {
-          //  null/not null
-          if (lhs._cvalue && !rhs._cvalue)
-          {
-            return 3;
-          }
-
-          //  null/not null
-          if (lhs._cvalue && rhs._cvalue)
-          {
-            if (lhs._lcvalue != rhs._lcvalue)
-            {
-              return 4;
-            }
-
-            //  the lenght is the same, so we can use the size of lhs
-            if (0 != std::memcmp(lhs._cvalue, rhs._cvalue, lhs._lcvalue))
-            {
-              return 4;
-            }
-          }
+          return CompareString(lhs, rhs);
         }
 
-        // looks the same
+        // they look the same.
+        return 0;
+      }
+
+      /**
+      * Compare two non-number strings.
+      * This function assumes that both values are string and either of them is _not_ a number.
+      * Note that Wide/AscII are not the same, so "Hello" != L"Hello"
+      * @throw if we are unable to compare, (not same types, not same sizes etc...)
+      * @param const Any& lhs the lhs value been compared.
+      * @param const Any& rhs the rhs value been compared.
+      * @return short 0 if they are the same or -1 if not.
+      */
+      static short CompareString(const Any& lhs, const Any& rhs)
+      {
+        //  if we are here, then neither values can be null.
+        if (!lhs._cvalue || !rhs._cvalue)
+        {
+          return 3;
+        }
+
+        // are both strings the same lengh?
+        // if not then they are not the same.
+        if (lhs._lcvalue != rhs._lcvalue)
+        {
+          return 4;
+        }
+
+        // the lenght is the same, so we can use the size of lhs
+        // it does not matter if they are both wide or not, we are 
+        // just comparing that both balues are the same.
+        if (0 != std::memcmp(lhs._cvalue, rhs._cvalue, lhs._lcvalue))
+        {
+          return 4;
+        }
+
+        //  look the same.
         return 0;
       }
 
@@ -1794,10 +1822,10 @@ namespace myodd {
       * @throw if we are unable to compare, (not same types, not same sizes etc...)
       * @return short 0 if they are the same or -1 if not.
       */
-      static short CompareTrivial(const Any& lhs, const Any& rhs)
+      static short CompareCopy(const Any& lhs, const Any& rhs)
       {
         // are they both trivial?
-        if (!lhs.IsTrivial() || !rhs.IsTrivial())
+        if (!dynamic::is_type_copy(lhs.Type()) || !dynamic::is_type_copy(rhs.Type()) )
         {
           // We cannot compare non trivials.
           throw std::bad_cast();
@@ -3000,7 +3028,7 @@ namespace myodd {
       template<class T, typename = std::enable_if_t< std::is_pointer<T>::value> >
       T CastToCopyPtr() const
       {
-        if (!IsTrivial())
+        if (!dynamic::is_type_copy( Type() ))
         {
           // we cannot convert this to a trivial type.
           throw std::bad_cast();
@@ -3052,7 +3080,7 @@ namespace myodd {
       template<class T, typename = std::enable_if_t< !std::is_pointer<T>::value> >
       T CastToCopy() const
       {
-        if (!IsTrivial())
+        if (!dynamic::is_type_copy( Type() ))
         {
           // we cannot convert this to a trivial type.
           throw std::bad_cast();
@@ -3628,27 +3656,6 @@ namespace myodd {
         StringStatus_Floating_Pos_Number,            // '+123.1' or '123.1' or '0.1' or '-0.1'
         StringStatus_Floating_Neg_Number,            // '-123.1'
       };
-
-      /**
-      * Check if this is a trivial type or not.
-      * @return boolean if *this is trivial or not.
-      */
-      bool IsTrivial() const
-      {
-        switch (Type())
-        {
-        case dynamic::Misc_copy:
-        case dynamic::Misc_copy_ptr:
-          // trivial
-          return true;
-
-        default:
-          break;
-        }
-
-        // no trivial
-        return false;
-      }
 
       /**
       * Check if our string is a number or not.
