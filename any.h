@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.9"
+#define MYODD_ANY_VERSION        "0.1.10"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001009 
+#define MYODD_ANY_VERSION_NUMBER 0001010 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -48,6 +48,18 @@
 #include "types.h"        // data type
 
 namespace myodd {
+  namespace _Check
+  {
+    struct No {};
+    template<typename T, typename Arg> No operator== (const T&, const Arg&);
+
+    template<typename T, typename Arg = T>
+    struct EqualExists
+    {
+      enum { value = !std::is_same<decltype(*(T*)(0) == *(Arg*)(0)), No>::value };
+    };
+  }
+
   namespace dynamic {
     class Any
     {
@@ -383,6 +395,30 @@ namespace myodd {
       {
         // cast *this to value
         return CastToWideChar();
+      }
+
+      friend std::ostream& operator<< (std::ostream& stream, const Any& any)
+      {
+        // write obj to stream
+        if ( dynamic::is_type_copy( any.Type() ))
+        {
+          stream << "Copy Value";
+        }
+        else
+        {
+          try
+          {
+            std::wstring value;
+            any.CastToCharacters(value);
+            stream << value.c_str();
+          }
+          catch (...)
+          {
+            // no idea how to display this.
+            stream << "NAN";
+          }
+        }
+        return stream;
       }
 
       /**
@@ -1838,7 +1874,8 @@ namespace myodd {
           {
             return 1;
           }
-          return std::memcmp(lhs._unkvalue->Data(), rhs._unkvalue->Data(), lhs._unkvalue->Size());
+          // both are the same, (trivial or non-trivial), just compare by size.
+          return (lhs._unkvalue->Compare(rhs._unkvalue->Data()) ? 0 : 1);
         }
 
         // not sure how to compare those.
@@ -3867,12 +3904,14 @@ namespace myodd {
 
         virtual void* Data() const = 0;
         virtual size_t Size() const = 0;
+        virtual bool Compare(void* to) const = 0;
+        virtual bool IsTrivial() const = 0;
       };
 
-      template <class T>
+      template<class T>
       struct UnknownItem : UnknownItemBase
       {
-        UnknownItem( const T& value) : UnknownItemBase(),  _value( nullptr )
+        UnknownItem(const T& value) : UnknownItemBase(), _value(nullptr)
         {
           _value = new T(value);
         }
@@ -3885,10 +3924,37 @@ namespace myodd {
         virtual void* Data() const { return (void*)_value; }
         virtual size_t Size() const { return sizeof(T); }
 
+        template<class Q = T>
+        std::enable_if_t<::myodd::_Check::EqualExists<Q, Q>::value, bool > _Compare(void* to) const {
+          Q* toWhat = reinterpret_cast<Q*>(to);
+          if (!toWhat) {
+            return false;
+          }
+          return ((*_value) == (*toWhat));
+        }
+
+        template<class Q = T>
+        std::enable_if_t<!::myodd::_Check::EqualExists<Q, Q>::value, bool > _Compare(void* to) const {
+          if (!IsTrivial())
+          {
+            throw std::runtime_error("Trying to compare 2 items, but this class does have an equal(==) operator.");
+          }
+          return (0 == std::memcmp(_value, to, Size()));
+        }
+
+        virtual bool Compare(void* to) const {
+          return _Compare(to);
+        }
+
+        virtual bool IsTrivial() const {
+          return std::is_trivially_copyable<T>::value;
+        }
+
       protected:
         T* _value;
       };
-
+     
+ 
       UnknownItemBase* _unkvalue;
 
       // the biggest integer value.

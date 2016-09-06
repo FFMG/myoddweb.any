@@ -90,6 +90,16 @@ See the [Arithmetic Conversions](doc/arithmeticconversions.md) document for more
 	- but `"-9" != "-9.a"`
 - Decimal strings are respected, `"-121.000"` will become a `long double`, in real terms this does not really make a difference with most compilers/interpretations, (but it is something to bear in mind).
 
+#### Non-Fundamental rules.
+
+Of course, you can assign a non-fundamental to an `::dynamic::Any`, but some of the behaviour is undefined.
+
+- trying to compare 2 different classes, (no even derived), will probably cause things to end badly.
+- trying to compare a structure and a class will throw a `bad_cast` error
+- trying to compare a class without an equal operator will throw a `runtime_error` error
+
+You must also provide a valid copy constructor, otherwise pass the values as pointers, (but if the pointer goes out of scope, then everything will probably break).
+
 #### Arithmetic rules.
 
 - Non number strings are equal to zero, (so "Hello"=0 and "Hello" + "World"=0)
@@ -282,8 +292,8 @@ While this level of flexibility will never result in an equal performance with t
 ## Todo
 
 - <strike>implement [std::is_trivially_copyable](http://en.cppreference.com/w/cpp/types/is_trivially_copyable) to allow structures to be held in memory.</strike> *(done 30/08/2016)*  
-- implement [std::is_copy_constructible](http://en.cppreference.com/w/cpp/types/is_copy_constructible) to allow classes to be added.  
-Those objects cannot have arithmetic done to them, (+,-,/,*)
+- <strike>implement [std::is_copy_constructible](http://en.cppreference.com/w/cpp/types/is_copy_constructible) to allow classes to be added.  
+Those objects cannot have arithmetic done to them, (+,-,/,*)</strike> *(done 06/06/2016)*
 - <strike>Removed new/delete of `long long int` and `long double` as it is slow(er) and been on the stack is often better.</strike> *(done 24/08/2016)*
 - <strike>Assign `std::string` and `std::wstring`  
 myodd::dynamic::And( std::string("Hello") );</strike> *(done 25/08/2016)*
