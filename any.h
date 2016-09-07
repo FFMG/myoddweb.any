@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.13"
+#define MYODD_ANY_VERSION        "0.1.14"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001013
+#define MYODD_ANY_VERSION_NUMBER 0001014
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -1661,165 +1661,89 @@ namespace myodd {
         case Integer_unsigned_short_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((short)lhs._llivalue >= (short)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((short)lhs._llivalue < (short)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue < 0 && (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue >= 0 || (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
 
         case Integer_int:
         case Integer_unsigned_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((int)lhs._llivalue >= (int)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((int)lhs._llivalue < (int)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue >= 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue < 0 || (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
 
         case Integer_long_int:
         case Integer_unsigned_long_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((long int)lhs._llivalue >= (long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((long int)lhs._llivalue < (long int)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
-          // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-          if (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
-          {
-            return false;
+            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
+            return (lhs._llivalue < 0 || (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
           }
-          }
-          else
-          {
-            if ((unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
 
         case Integer_long_long_int:
         case Integer_unsigned_long_long_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((long long int)lhs._llivalue >= (long long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((long long int)lhs._llivalue < (long long int)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue < 0 || (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
 
           // Floating point
         case Floating_point_float:
-          if ((float)lhs._ldvalue >= (float)rhs._ldvalue)
-          {
-            return false;
-          }
-          break;
+          return ((float)lhs._ldvalue < (float)rhs._ldvalue);
 
         case Floating_point_double:
-          if ((double)lhs._ldvalue >= (double)rhs._ldvalue)
-          {
-            return false;
-          }
-          break;
+          return ((double)lhs._ldvalue < (double)rhs._ldvalue);
 
         case Floating_point_long_double:
-          if (lhs._ldvalue >= rhs._ldvalue)
-          {
-            return false;
-          }
-          break;
+          return (lhs._ldvalue < rhs._ldvalue);
 
         default:
           throw std::bad_cast();
         }
 
-        // lhs seems to be smaller than rhs
+        //  never reached.
         return true;
       }
 
@@ -1925,165 +1849,89 @@ namespace myodd {
         case Integer_unsigned_short_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((short)lhs._llivalue != (short)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((short)lhs._llivalue == (short)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            if (rhs._llivalue < 0 || (unsigned short)lhs._llivalue != (unsigned short)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            if (lhs._llivalue < 0 || (unsigned short)lhs._llivalue != (unsigned short)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned short)lhs._llivalue != (unsigned short)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
 
         case Integer_int:
         case Integer_unsigned_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((int)lhs._llivalue != (int)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((int)lhs._llivalue == (int)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            if (rhs._llivalue < 0 || (unsigned int)lhs._llivalue != (unsigned int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            if (lhs._llivalue < 0 || (unsigned int)lhs._llivalue != (unsigned int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue >= 0 && (unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned int)lhs._llivalue != (unsigned int)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
 
         case Integer_long_int:
         case Integer_unsigned_long_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((long int)lhs._llivalue != (long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((long int)lhs._llivalue == (long int)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            if (rhs._llivalue < 0 || (unsigned long int)lhs._llivalue != (unsigned long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            if (lhs._llivalue < 0 || (unsigned long int)lhs._llivalue != (unsigned long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned long int)lhs._llivalue != (unsigned long int)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
 
         case Integer_long_long_int:
         case Integer_unsigned_long_long_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            if ((long long int)lhs._llivalue != (long long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return ((long long int)lhs._llivalue == (long long int)rhs._llivalue);
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            if (rhs._llivalue < 0 || (unsigned long long int)lhs._llivalue != (unsigned long long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            if (lhs._llivalue < 0 || (unsigned long long int)lhs._llivalue != (unsigned long long int)rhs._llivalue)
-            {
-              return false;
-            }
+            return (lhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
           }
-          else
-          {
-            if ((unsigned long long int)lhs._llivalue != (unsigned long long int)rhs._llivalue)
-            {
-              return false;
-            }
-          }
-          break;
+          return ((unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
 
           // Floating point
         case Floating_point_float:
-          if ((float)lhs._ldvalue != (float)rhs._ldvalue)
-          {
-            return false;
-          }
-          break;
+          return ((float)lhs._ldvalue == (float)rhs._ldvalue);
 
         case Floating_point_double:
-          if ((double)lhs._ldvalue != (double)rhs._ldvalue)
-          {
-            return false;
-          }
-          break;
+          return ((double)lhs._ldvalue == (double)rhs._ldvalue);
 
         case Floating_point_long_double:
-          if (lhs._ldvalue != rhs._ldvalue)
-          {
-            return false;
-          }
-          break;
+          return (lhs._ldvalue == rhs._ldvalue);
 
         default:
           throw std::bad_cast();
         }
 
-        // lhs seems to be equal to rhs
+        // never reached
         return true;
       }
 
