@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.12"
+#define MYODD_ANY_VERSION        "0.1.13"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001012
+#define MYODD_ANY_VERSION_NUMBER 0001013
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -1890,19 +1890,26 @@ namespace myodd {
         {
           return EqualCopy(lhs, rhs);
         }
-        return EqualDefault(lhs, rhs);
+
+        // if either value is a string then we have to compare the values to see if they are similar.
+        if (dynamic::is_type_character(lhs.Type()) || dynamic::is_type_character(rhs.Type()))
+        {
+          return EqualString(lhs, rhs);
+        }
+
+        // otherwise check them as numbers.
+        return EqualNumber(lhs, rhs);
       }
 
       /**
-      * Do a default compare of string or fundamental types.
+      * Do a number compare of string or fundamental types.
       * @throw if we are unable to compare, (not same types, not same sizes etc...)
+      * @param const Any& lhs the left hand side value.
+      * @param const Any& rhs the right hand side value.
       * @return bool if they are equal or not.
       */
-      static bool EqualDefault(const Any& lhs, const Any& rhs)
+      static bool EqualNumber(const Any& lhs, const Any& rhs)
       {
-        //  find the 'common' type
-        // in the case of 2 characters we could end up comparing 2xzeros
-        // but it is fine as we will compare them further later.
         auto type = CalculateType(lhs, rhs);
         switch (type)
         {
@@ -1916,33 +1923,137 @@ namespace myodd {
           // Integer
         case Integer_short_int:
         case Integer_unsigned_short_int:
-          if ((short int)lhs._llivalue != (short int)rhs._llivalue)
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return false;
+            if ((short)lhs._llivalue != (short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
+            if (rhs._llivalue < 0 || (unsigned short)lhs._llivalue != (unsigned short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
+            if (lhs._llivalue < 0 || (unsigned short)lhs._llivalue != (unsigned short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned short)lhs._llivalue != (unsigned short)rhs._llivalue)
+            {
+              return false;
+            }
           }
           break;
 
         case Integer_int:
         case Integer_unsigned_int:
-          if ((int)lhs._llivalue != (int)rhs._llivalue)
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return false;
+            if ((int)lhs._llivalue != (int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
+            if (rhs._llivalue < 0 || (unsigned int)lhs._llivalue != (unsigned int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
+            if (lhs._llivalue < 0 || (unsigned int)lhs._llivalue != (unsigned int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned int)lhs._llivalue != (unsigned int)rhs._llivalue)
+            {
+              return false;
+            }
           }
           break;
 
         case Integer_long_int:
         case Integer_unsigned_long_int:
-          if ((long int)lhs._llivalue != (long int)rhs._llivalue)
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return false;
+            if ((long int)lhs._llivalue != (long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
+            if (rhs._llivalue < 0 || (unsigned long int)lhs._llivalue != (unsigned long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
+            if (lhs._llivalue < 0 || (unsigned long int)lhs._llivalue != (unsigned long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned long int)lhs._llivalue != (unsigned long int)rhs._llivalue)
+            {
+              return false;
+            }
           }
           break;
 
         case Integer_long_long_int:
         case Integer_unsigned_long_long_int:
-          if (lhs._llivalue != rhs._llivalue)
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return false;
+            if ((long long int)lhs._llivalue != (long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
+            if (rhs._llivalue < 0 || (unsigned long long int)lhs._llivalue != (unsigned long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
+            if (lhs._llivalue < 0 || (unsigned long long int)lhs._llivalue != (unsigned long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned long long int)lhs._llivalue != (unsigned long long int)rhs._llivalue)
+            {
+              return false;
+            }
           }
           break;
 
@@ -1972,16 +2083,7 @@ namespace myodd {
           throw std::bad_cast();
         }
 
-        // if we made it this far they are both the same
-        // but if they are boith strings and they do not represent numbers
-        // then we need to compare the string values.
-        if (dynamic::is_type_character(lhs.Type()) && dynamic::is_type_character(rhs.Type()) &&
-          (!lhs.IsStringNumber(false) || !rhs.IsStringNumber(false)))
-        {
-          return EqualString(lhs, rhs);
-        }
-
-        // they look the same.
+        // lhs seems to be equal to rhs
         return true;
       }
 
@@ -1996,10 +2098,28 @@ namespace myodd {
       */
       static bool EqualString(const Any& lhs, const Any& rhs)
       {
+        // if either of them is _not_ a stringand we know the other is a string
+        // then we have to treat the other as zero, (or maybe valid number)
+        // for example 0 == "Hello"
+        if (!dynamic::is_type_character(lhs.Type()) || !dynamic::is_type_character(rhs.Type()))
+        {
+          return EqualNumber(lhs, rhs);
+        }
+
+        // if both of those strings are full numbers then we could compare them as numbers.
+        // if the other is not a full number, then we will compare them as string.
+        // so "12 Hello" != "12 Bye" but "12.0" == "12"
+        if (lhs.IsStringNumber(false) && rhs.IsStringNumber(false))
+        {
+          return EqualNumber(lhs, rhs);
+        }
+
         //  if we are here, then neither values can be null.
         if (!lhs._cvalue || !rhs._cvalue)
         {
-          return false;
+          // we throw a runtime error as it should never happen
+          // how can we have a string and the actual value for it be null??
+          throw std::runtime_error("This is imposible, how can a string have a null value!");
         }
 
         // are both strings the same lengh?
@@ -2012,13 +2132,7 @@ namespace myodd {
         // the lenght is the same, so we can use the size of lhs
         // it does not matter if they are both wide or not, we are 
         // just comparing that both balues are the same.
-        if (0 != std::memcmp(lhs._cvalue, rhs._cvalue, lhs._lcvalue))
-        {
-          return false;
-        }
-
-        //  look the same.
-        return true;
+        return (0 == std::memcmp(lhs._cvalue, rhs._cvalue, lhs._lcvalue));
       }
 
       /**

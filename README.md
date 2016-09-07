@@ -13,7 +13,7 @@ The home project is [myoddweb.any](https://github.com/FFMG/myoddweb.any), this i
 Include them in your project as you would include any other classes.
 
 The code was written and tested on `c++11`, I *suspect* it will work on older compiler with a couple of macros, but I will cross that bridge if/when someone ask for it.
-
+C
 ## Usage
 
 Just include the file where ever you placed it and then use the class.
@@ -110,6 +110,27 @@ You must also provide a valid copy constructor, otherwise pass the values as poi
 	- '0' -> '9' for `char`/`wchar_t`
 	- any valid looking number, "1234.456" = (double)1234.456
 - By default the floating point number is a `double`, if more space is needed is it elevated to a `long double`.
+
+#### 'Compare' rules
+##### Numbers
+Numbers are compared as you would expect them `12 == 12` or `42 > -87`
+
+##### Strings
+Strings are first evaluated to a number, if they are both numbers, then the number is compared.
+
+`"12.34" == "12.34"` or `"12.34" < "1234"`
+
+If you are trying to compare a number and a string, then the string is evaluated to a number, (or zero).
+
+`"12.34" > "Hello"`, (because `"12.34"`is converted to `(double)12.34` and `"Hello"` is converted to `(int)0`, so in that case,  `(double)12.34 > (int)0`
+
+When it comes to equal comparison, partial number-strings are not compared as numbers.
+
+So `"12 Hello" != "12 World"` because they are compared as strings.
+
+But if you add a number in the comparison, then we will try and compare the string as a number if possible.
+
+So `"12 Hello" == 12` because the second value is an `(int)12`.
 
 ### Who else does dynamic typing?
 
