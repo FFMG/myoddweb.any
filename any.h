@@ -1628,7 +1628,13 @@ namespace myodd {
           return false;
         }
 
-        return LessThanDefault(lhs, rhs);
+        // if either of them is a string, then we need to check them first.
+        if (dynamic::is_type_character(lhs.Type()) || dynamic::is_type_character(rhs.Type()))
+        {
+          return LessThanString(lhs, rhs);
+        }
+
+        return LessThanNumber(lhs, rhs);
       }
 
       /**
@@ -1638,7 +1644,7 @@ namespace myodd {
        * @param const Any& rhs the rhs value been compared.
        * @return bool if the lhs < rhs
        */
-      static bool LessThanDefault(const Any& lhs, const Any& rhs)
+      static bool LessThanNumber(const Any& lhs, const Any& rhs)
       {
         auto type = CalculateType(lhs, rhs);
         switch (type)
@@ -1663,7 +1669,7 @@ namespace myodd {
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue > 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
+            if (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
             {
               return false;
             }
@@ -1671,7 +1677,7 @@ namespace myodd {
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue > 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
+            if (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
             {
               return false;
             }
@@ -1697,7 +1703,7 @@ namespace myodd {
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue > 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
+            if (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
             {
               return false;
             }
@@ -1705,7 +1711,7 @@ namespace myodd {
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue > 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
+            if (lhs._llivalue >= 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
             {
               return false;
             }
@@ -1731,18 +1737,18 @@ namespace myodd {
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue > 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
+            if (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
             {
               return false;
             }
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
-            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue > 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
-            {
-              return false;
-            }
+          // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
+          if (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
+          {
+            return false;
+          }
           }
           else
           {
@@ -1765,7 +1771,7 @@ namespace myodd {
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            if (rhs._llivalue > 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
+            if (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
             {
               return false;
             }
@@ -1773,7 +1779,7 @@ namespace myodd {
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            if (lhs._llivalue > 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
+            if (lhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
             {
               return false;
             }
@@ -1813,15 +1819,6 @@ namespace myodd {
           throw std::bad_cast();
         }
 
-        // if we made it this far they are both the same
-        // but if they are boith strings and they do not represent numbers
-        // then we need to compare the string values.
-        if (dynamic::is_type_character(lhs.Type()) && dynamic::is_type_character(rhs.Type()) &&
-          (!lhs.IsStringNumber(false) || !rhs.IsStringNumber(false)))
-        {
-          return LessThanString(lhs, rhs);
-        }
-
         // lhs seems to be smaller than rhs
         return true;
       }
@@ -1835,10 +1832,28 @@ namespace myodd {
       */
       static bool LessThanString(const Any& lhs, const Any& rhs)
       {
+        // if either of them is _not_ a stringand we know the other is a string
+        // then we have to treat the other as zero, (or maybe valid number)
+        // for example 12 < "Hello"
+        if (!dynamic::is_type_character(lhs.Type()) || !dynamic::is_type_character(rhs.Type()))
+        {
+          return LessThanNumber(lhs, rhs);
+        }
+
+        // if either of them is a number, (even partial), then we have to compare it as a number
+        // and if the other is not a string, then we will compare them both.
+        // for example "12 bottles of beer" > "Hello" (12 > 0)
+        if (lhs.IsStringNumber( true ) || rhs.IsStringNumber( true ))
+        {
+          return LessThanNumber(lhs, rhs);
+        }
+
         //  if we are here, then neither values can be null.
         if (!lhs._cvalue || !rhs._cvalue)
         {
-          return false;
+          // we throw a runtime error as it should never happen
+          // how can we have a string and the actual value for it be null??
+          throw std::runtime_error( "This is imposible, how can a string have a null value!" );
         }
 
         // it might not be '\0' terminated, so we have to go by the len.
