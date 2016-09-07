@@ -329,6 +329,44 @@ namespace myodd {
       throw std::runtime_error("Unknown data Type");
     }
 
+    /**
+     * Check that this type is a valid suported type.
+     * @param const Type& type the type we are checking
+     * @return bool if the type is known or not.
+     */
+    inline bool is_known_type( const Type& type )
+    {
+      // special case for null
+      switch (type)
+      {
+      case dynamic::Misc_unknown:
+      case dynamic::Misc_null:
+      case dynamic::Misc_copy:
+      case dynamic::Misc_copy_ptr:
+      case dynamic::Boolean_bool:
+      case dynamic::Character_signed_char:
+      case dynamic::Character_unsigned_char:
+      case dynamic::Character_char:
+      case dynamic::Character_wchar_t:
+      case dynamic::Integer_short_int:
+      case dynamic::Integer_unsigned_short_int:
+      case dynamic::Integer_int:
+      case dynamic::Integer_unsigned_int:
+      case dynamic::Integer_long_int:
+      case dynamic::Integer_unsigned_long_int:
+      case dynamic::Integer_long_long_int:
+      case dynamic::Integer_unsigned_long_long_int:
+      case dynamic::Floating_point_float:
+      case dynamic::Floating_point_double:
+      case dynamic::Floating_point_long_double:
+        return true;
+
+      default:
+        // unknown
+        return false;
+      }
+    }
+
     template<class T>
     struct get_type
     {

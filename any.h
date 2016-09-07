@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.10"
+#define MYODD_ANY_VERSION        "0.1.11"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001010 
+#define MYODD_ANY_VERSION_NUMBER 0001011 
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -478,7 +478,7 @@ namespace myodd {
       */
       bool operator==(const Any& other) const
       {
-        return (Compare(*this, other) == 0);
+        return Equal(*this, other);
       }
 
       /**
@@ -489,7 +489,7 @@ namespace myodd {
       template<class T>
       friend bool operator==(const T& lhs, const Any& rhs)
       {
-        return (Compare(Any(lhs), rhs) == 0);
+        return Equal(Any(lhs), rhs);
       }
 
       /**
@@ -501,7 +501,7 @@ namespace myodd {
       template<class T>
       friend bool operator==(const Any& lhs, const T& rhs)
       {
-        return (Compare(lhs, Any(rhs)) == 0);
+        return Equal(lhs, Any(rhs));
       }
 
       /**
@@ -511,7 +511,7 @@ namespace myodd {
       */
       bool operator!=(const Any &other) const
       {
-        return (Compare(*this, other) != 0);
+        return !Equal(*this, other );
       }
 
       /**
@@ -521,7 +521,7 @@ namespace myodd {
       */
       template<class T> friend bool operator!=(const T& lhs, const Any& rhs)
       {
-        return (Compare(Any(lhs), rhs) != 0);
+        return !Equal(Any(lhs), rhs);
       }
 
       /**
@@ -531,7 +531,7 @@ namespace myodd {
       */
       template<class T> friend bool operator!=(const Any& lhs, const T& rhs)
       {
-        return (Compare(lhs, Any(rhs)) != 0);
+        return !Equal(lhs, Any(rhs));
       }
 
       /**
@@ -1670,58 +1670,38 @@ namespace myodd {
       * Compare 2 values and return 0 if they are both the same.
       * @param const Any& lhs the lhs value been compared.
       * @param const Any& rhs the lhs value been compared.
-      * @return short, 0 if equal, -1 if type not the same, >=1 if value not same.
+      * @return short, 0 if equal < 0 or > 0 if not same.
       */
-      static short Compare(const Any& lhs, const Any& rhs)
+      static bool Equal(const Any& lhs, const Any& rhs)
       {
-        // special case for null
-        switch (lhs.Type())
+        // validates that we have known types.
+        if (!dynamic::is_known_type(lhs.Type()) || !dynamic::is_known_type(rhs.Type()) )
         {
-        case dynamic::Misc_unknown:
-        case dynamic::Misc_null:
-          // both are the same, (as per above), so if both null then they are the same.
-          // all the values should be the same but there is no point in checking.
-          return 0;
-
-        case dynamic::Misc_copy:
-        case dynamic::Misc_copy_ptr:
-        case dynamic::Boolean_bool:
-        case dynamic::Character_signed_char:
-        case dynamic::Character_unsigned_char:
-        case dynamic::Character_char:
-        case dynamic::Character_wchar_t:
-        case dynamic::Integer_short_int:
-        case dynamic::Integer_unsigned_short_int:
-        case dynamic::Integer_int:
-        case dynamic::Integer_unsigned_int:
-        case dynamic::Integer_long_int:
-        case dynamic::Integer_unsigned_long_int:
-        case dynamic::Integer_long_long_int:
-        case dynamic::Integer_unsigned_long_long_int:
-        case dynamic::Floating_point_float:
-        case dynamic::Floating_point_double:
-        case dynamic::Floating_point_long_double:
-          break;
-
-        default:
-          // unknown
           throw std::runtime_error("Unknown data Type");
+        }
+
+        // check for null types.
+        if (dynamic::is_type_null( lhs.Type() ) && dynamic::is_type_null(rhs.Type()) )
+        {
+          // both are the same, so if both null then they are the same.
+          // all the values should be the same but there is no point in checking.
+          return true;
         }
 
         // are we comparing trivial structures
         if (dynamic::is_type_copy(lhs.Type()) || dynamic::is_type_copy(rhs.Type()))
         {
-          return CompareCopy(lhs, rhs);
+          return EqualCopy(lhs, rhs);
         }
-        return CompareDefault(lhs, rhs);
+        return EqualDefault(lhs, rhs);
       }
 
       /**
       * Do a default compare of string or fundamental types.
       * @throw if we are unable to compare, (not same types, not same sizes etc...)
-      * @return short 0 if they are the same or -1 if not.
+      * @return bool if they are equal or not.
       */
-      static short CompareDefault(const Any& lhs, const Any& rhs)
+      static bool EqualDefault(const Any& lhs, const Any& rhs)
       {
         //  find the 'common' type
         // in the case of 2 characters we could end up comparing 2xzeros
@@ -1729,28 +1709,19 @@ namespace myodd {
         auto type = CalculateType(lhs, rhs);
         switch (type)
         {
-          // bool
         case Boolean_bool:
-          //  should both be == 1
-          if (lhs._llivalue != rhs._llivalue)
-          {
-            return 1;
-          }
-          break;
-
-          // character
         case Character_signed_char:
         case Character_unsigned_char:
         case Character_char:
         case Character_wchar_t:
-          break;
+          throw std::runtime_error("Logic error, the function CalculateType() should never return those types.");
 
           // Integer
         case Integer_short_int:
         case Integer_unsigned_short_int:
           if ((short int)lhs._llivalue != (short int)rhs._llivalue)
           {
-            return 1;
+            return false;
           }
           break;
 
@@ -1758,7 +1729,7 @@ namespace myodd {
         case Integer_unsigned_int:
           if ((int)lhs._llivalue != (int)rhs._llivalue)
           {
-            return 1;
+            return false;
           }
           break;
 
@@ -1766,7 +1737,7 @@ namespace myodd {
         case Integer_unsigned_long_int:
           if ((long int)lhs._llivalue != (long int)rhs._llivalue)
           {
-            return 1;
+            return false;
           }
           break;
 
@@ -1774,7 +1745,7 @@ namespace myodd {
         case Integer_unsigned_long_long_int:
           if (lhs._llivalue != rhs._llivalue)
           {
-            return 1;
+            return false;
           }
           break;
 
@@ -1782,21 +1753,21 @@ namespace myodd {
         case Floating_point_float:
           if ((float)lhs._ldvalue != (float)rhs._ldvalue)
           {
-            return 1;
+            return false;
           }
           break;
 
         case Floating_point_double:
           if ((double)lhs._ldvalue != (double)rhs._ldvalue)
           {
-            return 1;
+            return false;
           }
           break;
 
         case Floating_point_long_double:
           if (lhs._ldvalue != rhs._ldvalue)
           {
-            return 1;
+            return false;
           }
           break;
 
@@ -1810,11 +1781,11 @@ namespace myodd {
         if (dynamic::is_type_character(lhs.Type()) && dynamic::is_type_character(rhs.Type()) &&
           (!lhs.IsStringNumber(false) || !rhs.IsStringNumber(false)))
         {
-          return CompareString(lhs, rhs);
+          return EqualString(lhs, rhs);
         }
 
         // they look the same.
-        return 0;
+        return true;
       }
 
       /**
@@ -1824,21 +1795,21 @@ namespace myodd {
       * @throw if we are unable to compare, (not same types, not same sizes etc...)
       * @param const Any& lhs the lhs value been compared.
       * @param const Any& rhs the rhs value been compared.
-      * @return short 0 if they are the same or -1 if not.
+      * @return bool if they are the same or not.
       */
-      static short CompareString(const Any& lhs, const Any& rhs)
+      static bool EqualString(const Any& lhs, const Any& rhs)
       {
         //  if we are here, then neither values can be null.
         if (!lhs._cvalue || !rhs._cvalue)
         {
-          return 3;
+          return false;
         }
 
         // are both strings the same lengh?
         // if not then they are not the same.
         if (lhs._lcvalue != rhs._lcvalue)
         {
-          return 4;
+          return false;
         }
 
         // the lenght is the same, so we can use the size of lhs
@@ -1846,19 +1817,19 @@ namespace myodd {
         // just comparing that both balues are the same.
         if (0 != std::memcmp(lhs._cvalue, rhs._cvalue, lhs._lcvalue))
         {
-          return 4;
+          return false;
         }
 
         //  look the same.
-        return 0;
+        return true;
       }
 
       /**
       * Compare one or more trivial cases.
       * @throw if we are unable to compare, (not same types, not same sizes etc...)
-      * @return short 0 if they are the same or -1 if not.
+      * @return bool if they are the same or not.
       */
-      static short CompareCopy(const Any& lhs, const Any& rhs)
+      static bool EqualCopy(const Any& lhs, const Any& rhs)
       {
         // are they both trivial?
         if (!dynamic::is_type_copy(lhs.Type()) || !dynamic::is_type_copy(rhs.Type()) )
@@ -1872,10 +1843,10 @@ namespace myodd {
         {
           if (lhs._unkvalue->Size() != rhs._unkvalue->Size())
           {
-            return 1;
+            return false;
           }
           // both are the same, (trivial or non-trivial), just compare by size.
-          return (lhs._unkvalue->Compare(rhs._unkvalue->Data()) ? 0 : 1);
+          return lhs._unkvalue->Equal(rhs._unkvalue->Data());
         }
 
         // not sure how to compare those.
@@ -3904,7 +3875,7 @@ namespace myodd {
 
         virtual void* Data() const = 0;
         virtual size_t Size() const = 0;
-        virtual bool Compare(void* to) const = 0;
+        virtual bool Equal(void* to) const = 0;
         virtual bool IsTrivial() const = 0;
       };
 
@@ -3942,7 +3913,7 @@ namespace myodd {
           return (0 == std::memcmp(_value, to, Size()));
         }
 
-        virtual bool Compare(void* to) const {
+        virtual bool Equal(void* to) const {
           return _Compare(to);
         }
 
