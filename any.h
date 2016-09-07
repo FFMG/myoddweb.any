@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.11"
+#define MYODD_ANY_VERSION        "0.1.12"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001011 
+#define MYODD_ANY_VERSION_NUMBER 0001012
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -541,65 +541,7 @@ namespace myodd {
       */
       bool operator< (const Any& rhs) const
       {
-        // we use the double number as it is more precise
-        if (Type() == dynamic::Misc_null && rhs.Type() == dynamic::Misc_null)
-        {
-          //  null is not smaller than null
-          return false;
-        }
-        
-        if (dynamic::is_type_floating(NumberType()) && dynamic::is_type_floating(rhs.NumberType()))
-        {
-          // both are double.
-          return (_ldvalue < rhs._ldvalue);
-        }
-
-        if (dynamic::is_type_integer(NumberType()) && dynamic::is_type_floating(rhs.NumberType()))
-        {
-          // one is integer, the other is double
-          if (UseUnsignedInteger())
-          {
-            return ((unsigned long long int)_llivalue < rhs._ldvalue);
-          }
-          return (_llivalue < rhs._ldvalue);
-        }
-
-        if (dynamic::is_type_floating(NumberType()) && dynamic::is_type_integer(rhs.NumberType()))
-        {
-          // one is double, the other is integer.
-          if (rhs.UseUnsignedInteger())
-          {
-            return (_ldvalue < (unsigned long long int)rhs._llivalue);
-          }
-          return (_ldvalue < rhs._llivalue);
-        }
-
-        // both are integer
-        if (UseUnsignedInteger() && rhs.UseUnsignedInteger())
-        {
-          return ( (unsigned long long int)_llivalue < (unsigned long long int)rhs._llivalue);
-        }
-        if (UseUnsignedInteger() && rhs.UseSignedInteger())
-        {
-          if (rhs._llivalue < 0)
-          {
-            // as the other is unsigned, *this cannot be less
-            return false;
-          }
-          // cast them both to remove warnings.
-          return ((unsigned long long int)_llivalue < (unsigned long long int)rhs._llivalue);
-        }
-        if (UseSignedInteger() && rhs.UseUnsignedInteger())
-        {
-          if (_llivalue < 0)
-          {
-            // as the other is unsigned, *this has to be less
-            return true;
-          }
-          // cast them both to remove warnings.
-          return ((unsigned long long int)_llivalue < (unsigned long long int)rhs._llivalue);
-        }
-        return (_llivalue < rhs._llivalue);
+        return LessThan(*this, rhs);
       }
 
       /**
@@ -1570,12 +1512,12 @@ namespace myodd {
       static dynamic::Type CalculateType(const dynamic::Type& lhsOriginal, const dynamic::Type& rhsOriginal)
       {
         //  null values become ints.
-        if (is_Misc_null(lhsOriginal))
+        if (dynamic::is_type_null(lhsOriginal))
         {
           return CalculateType(dynamic::Integer_int, rhsOriginal);
         }
 
-        if (is_Misc_null(rhsOriginal))
+        if (dynamic::is_type_null(rhsOriginal))
         {
           return CalculateType(lhsOriginal, dynamic::Integer_int);
         }
@@ -1645,14 +1587,12 @@ namespace myodd {
           type = dynamic::Integer_unsigned_long_int;
         }
         // if either is long
-        else if (lhsOriginal == dynamic::Integer_long_int ||
-          rhsOriginal == dynamic::Integer_long_int)
+        else if (lhsOriginal == dynamic::Integer_long_int || rhsOriginal == dynamic::Integer_long_int)
         {
           type = dynamic::Integer_long_int;
         }
         // if either is unsigned int
-        else if (lhsOriginal == dynamic::Integer_unsigned_int ||
-          rhsOriginal == dynamic::Integer_unsigned_int)
+        else if (lhsOriginal == dynamic::Integer_unsigned_int || rhsOriginal == dynamic::Integer_unsigned_int)
         {
           type = dynamic::Integer_unsigned_int;
         }
@@ -1664,6 +1604,248 @@ namespace myodd {
         // if we are here, they are both the same type, (floating/integer)
         // so we need to return the greatest of them both.
         return type;
+      }
+
+      /**
+       * Calculate if the lhs is 'smaller' then the rhs
+       * @param const Any& lhs the lhs value been compared.
+       * @param const Any& rhs the rhs value been compared.
+       * @return bool if the lhs < rhs
+       */
+      static bool LessThan(const Any& lhs, const Any& rhs)
+      {
+        // validates that we have known types.
+        if (!dynamic::is_known_type(lhs.Type()) || !dynamic::is_known_type(rhs.Type()))
+        {
+          throw std::runtime_error("Unknown data Type");
+        }
+
+        // check for null types.
+        if (dynamic::is_type_null(lhs.Type()) && dynamic::is_type_null(rhs.Type() ))
+        {
+          // both are the same, so if both null then they are the same.
+          // all the values should be the same but there is no point in checking.
+          return false;
+        }
+
+        return LessThanDefault(lhs, rhs);
+      }
+
+      /**
+       * Calculate if the lhs is 'smaller' then the rhs
+       * This is the default behaviour, in the case of a numeric compare.
+       * @param const Any& lhs the lhs value been compared.
+       * @param const Any& rhs the rhs value been compared.
+       * @return bool if the lhs < rhs
+       */
+      static bool LessThanDefault(const Any& lhs, const Any& rhs)
+      {
+        auto type = CalculateType(lhs, rhs);
+        switch (type)
+        {
+        case Boolean_bool:
+        case Character_signed_char:
+        case Character_unsigned_char:
+        case Character_char:
+        case Character_wchar_t:
+          throw std::runtime_error("Logic error, the function CalculateType() should never return those types.");
+
+          // Integer
+        case Integer_short_int:
+        case Integer_unsigned_short_int:
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
+          {
+            if ((short)lhs._llivalue >= (short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
+            if (rhs._llivalue > 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
+            if (lhs._llivalue > 0 && (unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned short)lhs._llivalue >= (unsigned short)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          break;
+
+        case Integer_int:
+        case Integer_unsigned_int:
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
+          {
+            if ((int)lhs._llivalue >= (int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
+            if (rhs._llivalue > 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
+            if (lhs._llivalue > 0 && (unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned int)lhs._llivalue >= (unsigned int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          break;
+
+        case Integer_long_int:
+        case Integer_unsigned_long_int:
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
+          {
+            if ((long int)lhs._llivalue >= (long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
+            if (rhs._llivalue > 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
+            if (lhs._llivalue > 0 && (unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned long int)lhs._llivalue >= (unsigned long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          break;
+
+        case Integer_long_long_int:
+        case Integer_unsigned_long_long_int:
+          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
+          {
+            if ((long long int)lhs._llivalue >= (long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
+          {
+            // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
+            if (rhs._llivalue > 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
+          {
+            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
+            if (lhs._llivalue > 0 && (unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          else
+          {
+            if ((unsigned long long int)lhs._llivalue >= (unsigned long long int)rhs._llivalue)
+            {
+              return false;
+            }
+          }
+          break;
+
+          // Floating point
+        case Floating_point_float:
+          if ((float)lhs._ldvalue >= (float)rhs._ldvalue)
+          {
+            return false;
+          }
+          break;
+
+        case Floating_point_double:
+          if ((double)lhs._ldvalue >= (double)rhs._ldvalue)
+          {
+            return false;
+          }
+          break;
+
+        case Floating_point_long_double:
+          if (lhs._ldvalue >= rhs._ldvalue)
+          {
+            return false;
+          }
+          break;
+
+        default:
+          throw std::bad_cast();
+        }
+
+        // if we made it this far they are both the same
+        // but if they are boith strings and they do not represent numbers
+        // then we need to compare the string values.
+        if (dynamic::is_type_character(lhs.Type()) && dynamic::is_type_character(rhs.Type()) &&
+          (!lhs.IsStringNumber(false) || !rhs.IsStringNumber(false)))
+        {
+          return LessThanString(lhs, rhs);
+        }
+
+        // lhs seems to be smaller than rhs
+        return true;
+      }
+
+      /**
+      * Calculate if the lhs string is 'smaller' then the rhs
+      * This is the string behaviour.
+      * @param const Any& lhs the lhs value been compared.
+      * @param const Any& rhs the rhs value been compared.
+      * @return bool if the lhs < rhs
+      */
+      static bool LessThanString(const Any& lhs, const Any& rhs)
+      {
+        //  if we are here, then neither values can be null.
+        if (!lhs._cvalue || !rhs._cvalue)
+        {
+          return false;
+        }
+
+        // it might not be '\0' terminated, so we have to go by the len.
+        // <0	the first character that does not match has a lower value in str1 than in str2
+        //  0	the contents of both strings are equal
+        // >0	the first character that does not match has a greater value in str1 than in str2
+        return (memcmp(lhs._cvalue, rhs._cvalue, (lhs._lcvalue <= rhs._lcvalue ? lhs._lcvalue : rhs._lcvalue)) < 0);
       }
 
       /**

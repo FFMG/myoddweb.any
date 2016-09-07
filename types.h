@@ -176,45 +176,7 @@ namespace myodd {
       // unknown
       throw std::runtime_error("Unknown data Type");
     }
-
-    /**
-     * Check if the given type is null or not.
-     * @param const Type& type the type we are checking.
-     * @return bool if it is or not.
-     */
-    inline bool is_Misc_null(const Type& type)
-    {
-      switch (type)
-      {
-      case Misc_null:
-        return true;
-
-      case Misc_unknown:
-      case Misc_copy:
-      case Misc_copy_ptr:
-      case Boolean_bool:
-      case Character_signed_char:
-      case Character_unsigned_char:
-      case Character_char:
-      case Character_wchar_t:
-      case Integer_short_int:
-      case Integer_unsigned_short_int:
-      case Integer_int:
-      case Integer_unsigned_int:
-      case Integer_long_int:
-      case Integer_unsigned_long_int:
-      case Integer_long_long_int:
-      case Integer_unsigned_long_long_int:
-      case Floating_point_float:
-      case Floating_point_double:
-      case Floating_point_long_double:
-        return false;
-      }
-
-      // unknown
-      throw std::runtime_error("Unknown data Type");
-    }
-
+    
     /**
      * Check if the given type is a boolean or not.
      * @param const Type& type the type we are checking.
