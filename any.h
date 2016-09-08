@@ -63,6 +63,31 @@ namespace myodd {
   namespace dynamic {
     class Any
     {
+    private:
+      /**
+      * This is the type of comparaison we ar doing.
+      */
+      enum CompareType {
+        CompareType_LessThan,
+        CompareType_MoreThan
+      };
+
+      // the string status, does it represent a number? a floating number?
+      // is it a partial or non partial number?
+      enum StringStatus {
+        StringStatus_Not_A_Number,                    // 'blah' or 'blah123'
+        StringStatus_Partial_Pos_Number,              // '+123blah'
+        StringStatus_Partial_Neg_Number,              // '-123blah'
+
+        StringStatus_Pos_Number,                      // '+123' or '123' or '0' or '-0'
+        StringStatus_Neg_Number,                      // '-123'
+
+        StringStatus_Floating_Partial_Pos_Number,    // '+123.00blah' or '123.00blah'
+        StringStatus_Floating_Partial_Neg_Number,    // '-123.00blah'
+        StringStatus_Floating_Pos_Number,            // '+123.1' or '123.1' or '0.1' or '-0.1'
+        StringStatus_Floating_Neg_Number,            // '-123.1'
+      };
+
     public:
       /**
       * default constructor.
@@ -539,10 +564,7 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if *this < rhs
       */
-      bool operator< (const Any& rhs) const
-      {
-        return LessThan(*this, rhs);
-      }
+      bool operator< (const Any& rhs) const { return Compare(*this, rhs, CompareType_LessThan ); }
 
       /**
        * Relational operator less than
@@ -550,7 +572,7 @@ namespace myodd {
        * @param const T& rhs
        * @return bool if lhs < rhs
        */
-      template<class T> friend bool operator< (const Any& lhs, const T& rhs ){ return (lhs < Any(rhs)); }
+      template<class T> friend bool operator< (const Any& lhs, const T& rhs ){ return Compare(lhs, Any(rhs), CompareType_LessThan); }
 
       /**
       * Relational operator less than
@@ -558,22 +580,14 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs < rhs
       */
-      template<class T> friend bool operator< (const T& lhs, const Any& rhs) { return Any(lhs) < rhs; }
+      template<class T> friend bool operator< (const T& lhs, const Any& rhs) { return Compare(Any(lhs), rhs, CompareType_LessThan); }
 
       /**
       * Relational operator greater than
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      bool operator> (const Any& rhs) const { return !(*this < rhs || *this == rhs); }
-
-      /**
-      * Relational operator greater than
-      * @param const T& lhs
-      * @param const Any& rhs
-      * @return bool if lhs > rhs
-      */
-      template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return !(Any(lhs) <= rhs); }
+      bool operator> (const Any& rhs) const { return Compare(*this, rhs, CompareType_MoreThan); }
 
       /**
       * Relational operator greater than
@@ -581,7 +595,15 @@ namespace myodd {
       * @param const Any& rhs
       * @return bool if lhs > rhs
       */
-      template<class T>  friend bool operator> (const Any& lhs, const T& rhs) { return !(lhs <= Any(rhs)); }
+      template<class T>  friend bool operator> (const T& lhs, const Any& rhs) { return Compare(Any(lhs), rhs, CompareType_MoreThan); }
+
+      /**
+      * Relational operator greater than
+      * @param const T& lhs
+      * @param const Any& rhs
+      * @return bool if lhs > rhs
+      */
+      template<class T>  friend bool operator> (const Any& lhs, const T& rhs) { return Compare(lhs, Any(rhs), CompareType_MoreThan); }
 
       /**
       * Relational operator less or equal than
@@ -1606,13 +1628,15 @@ namespace myodd {
         return type;
       }
 
+
       /**
        * Calculate if the lhs is 'smaller' then the rhs
        * @param const Any& lhs the lhs value been compared.
        * @param const Any& rhs the rhs value been compared.
+       * @param const CompareType&  the type of comparaison been done.
        * @return bool if the lhs < rhs
        */
-      static bool LessThan(const Any& lhs, const Any& rhs)
+      static bool Compare(const Any& lhs, const Any& rhs, const CompareType& compareType )
       {
         // validates that we have known types.
         if (!dynamic::is_known_type(lhs.Type()) || !dynamic::is_known_type(rhs.Type()))
@@ -1631,10 +1655,10 @@ namespace myodd {
         // if either of them is a string, then we need to check them first.
         if (dynamic::is_type_character(lhs.Type()) || dynamic::is_type_character(rhs.Type()))
         {
-          return LessThanString(lhs, rhs);
+          return CompareString(lhs, rhs, compareType);
         }
 
-        return LessThanNumber(lhs, rhs);
+        return CompareNumber(lhs, rhs, compareType);
       }
 
       /**
@@ -1642,9 +1666,10 @@ namespace myodd {
        * This is the default behaviour, in the case of a numeric compare.
        * @param const Any& lhs the lhs value been compared.
        * @param const Any& rhs the rhs value been compared.
+       * @param const CompareType&  the type of comparaison been done.
        * @return bool if the lhs < rhs
        */
-      static bool LessThanNumber(const Any& lhs, const Any& rhs)
+      static bool CompareNumber(const Any& lhs, const Any& rhs, const CompareType& compareType)
       {
         auto type = CalculateType(lhs, rhs);
         switch (type)
@@ -1661,90 +1686,299 @@ namespace myodd {
         case Integer_unsigned_short_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return ((short)lhs._llivalue < (short)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((short)lhs._llivalue < (short)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((short)lhs._llivalue > (short)rhs._llivalue);
+
+            default:
+              throw std::runtime_error( "Unknown compare type" );
+            }
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            return (rhs._llivalue < 0 && (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (rhs._llivalue < 0 || (unsigned short)lhs._llivalue > (unsigned short)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            return (lhs._llivalue >= 0 || (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (lhs._llivalue < 0 || (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue > (unsigned short)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
-          return ((unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
+          else
+          {
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((unsigned short)lhs._llivalue > (unsigned short)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
+          }
+          break;
 
         case Integer_int:
         case Integer_unsigned_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return ((int)lhs._llivalue < (int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((int)lhs._llivalue < (int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((int)lhs._llivalue > (int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (rhs._llivalue < 0 || (unsigned int)lhs._llivalue > (unsigned int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            return (lhs._llivalue < 0 || (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (lhs._llivalue < 0 || (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (lhs._llivalue >= 0 && (unsigned int)lhs._llivalue > (unsigned int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
-          return ((unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
+          else
+          {
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((unsigned int)lhs._llivalue > (unsigned int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
+          }
+          break;
 
         case Integer_long_int:
         case Integer_unsigned_long_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return ((long int)lhs._llivalue < (long int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((long int)lhs._llivalue < (long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((long int)lhs._llivalue > (long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (rhs._llivalue < 0 || (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            return (lhs._llivalue < 0 || (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (lhs._llivalue < 0 || (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
-          return ((unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+          else
+          {
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((unsigned long int)lhs._llivalue > (unsigned long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
+          }
+          break;
 
         case Integer_long_long_int:
         case Integer_unsigned_long_long_int:
           if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
           {
-            return ((long long int)lhs._llivalue < (long long int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((long long int)lhs._llivalue < (long long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((long long int)lhs._llivalue > (long long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
           {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (rhs._llivalue < 0 || (unsigned long long int)lhs._llivalue > (unsigned long long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
           else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
           {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            return (lhs._llivalue < 0 || (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return (lhs._llivalue < 0 || (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return (lhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue > (unsigned long long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
           }
-          return ((unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
+          else
+          {
+            switch (compareType)
+            {
+            case CompareType_LessThan:
+              return ((unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
+
+            case CompareType_MoreThan:
+              return ((unsigned long long int)lhs._llivalue > (unsigned long long int)rhs._llivalue);
+
+            default:
+              throw std::runtime_error("Unknown compare type");
+            }
+          }
+          break;
 
           // Floating point
         case Floating_point_float:
-          return ((float)lhs._ldvalue < (float)rhs._ldvalue);
+          switch (compareType)
+          {
+          case CompareType_LessThan:
+            return ((float)lhs._ldvalue < (float)rhs._ldvalue);
+
+          case CompareType_MoreThan:
+            return ((float)lhs._ldvalue > (float)rhs._ldvalue);
+
+          default:
+            throw std::runtime_error("Unknown compare type");
+          }
+          break;
 
         case Floating_point_double:
-          return ((double)lhs._ldvalue < (double)rhs._ldvalue);
+          switch (compareType)
+          {
+          case CompareType_LessThan:
+            return ((double)lhs._ldvalue < (double)rhs._ldvalue);
+
+          case CompareType_MoreThan:
+            return ((double)lhs._ldvalue < (double)rhs._ldvalue);
+
+          default:
+            throw std::runtime_error("Unknown compare type");
+          }
+          break;
 
         case Floating_point_long_double:
-          return (lhs._ldvalue < rhs._ldvalue);
+          switch (compareType)
+          {
+          case CompareType_LessThan:
+            return (lhs._ldvalue < rhs._ldvalue);
+
+          case CompareType_MoreThan:
+            return (lhs._ldvalue < rhs._ldvalue);
+
+          default:
+            throw std::runtime_error("Unknown compare type");
+          }
+          break;
 
         default:
           throw std::bad_cast();
         }
 
         //  never reached.
-        return true;
+        throw std::runtime_error("Imposible, how did we get this far?");
       }
 
       /**
@@ -1752,16 +1986,17 @@ namespace myodd {
       * This is the string behaviour.
       * @param const Any& lhs the lhs value been compared.
       * @param const Any& rhs the rhs value been compared.
+      * @param const CompareType&  the type of comparaison been done.
       * @return bool if the lhs < rhs
       */
-      static bool LessThanString(const Any& lhs, const Any& rhs)
+      static bool CompareString(const Any& lhs, const Any& rhs, const CompareType& compareType)
       {
         // if either of them is _not_ a stringand we know the other is a string
         // then we have to treat the other as zero, (or maybe valid number)
         // for example 12 < "Hello"
         if (!dynamic::is_type_character(lhs.Type()) || !dynamic::is_type_character(rhs.Type()))
         {
-          return LessThanNumber(lhs, rhs);
+          return CompareNumber(lhs, rhs, compareType);
         }
 
         // if either of them is a number, (even partial), then we have to compare it as a number
@@ -1769,7 +2004,7 @@ namespace myodd {
         // for example "12 bottles of beer" > "Hello" (12 > 0)
         if (lhs.IsStringNumber( true ) || rhs.IsStringNumber( true ))
         {
-          return LessThanNumber(lhs, rhs);
+          return CompareNumber(lhs, rhs, compareType);
         }
 
         //  if we are here, then neither values can be null.
@@ -1779,12 +2014,22 @@ namespace myodd {
           // how can we have a string and the actual value for it be null??
           throw std::runtime_error( "This is imposible, how can a string have a null value!" );
         }
-
+        
         // it might not be '\0' terminated, so we have to go by the len.
         // <0	the first character that does not match has a lower value in str1 than in str2
         //  0	the contents of both strings are equal
         // >0	the first character that does not match has a greater value in str1 than in str2
-        return (memcmp(lhs._cvalue, rhs._cvalue, (lhs._lcvalue <= rhs._lcvalue ? lhs._lcvalue : rhs._lcvalue)) < 0);
+        switch (compareType)
+        {
+        case CompareType_LessThan:
+          return (memcmp(lhs._cvalue, rhs._cvalue, (lhs._lcvalue <= rhs._lcvalue ? lhs._lcvalue : rhs._lcvalue)) < 0);
+
+        case CompareType_MoreThan:
+          return (memcmp(lhs._cvalue, rhs._cvalue, (lhs._lcvalue <= rhs._lcvalue ? lhs._lcvalue : rhs._lcvalue)) > 0);
+
+        default:
+          throw std::runtime_error("Unknown compare type");
+        }
       }
 
       /**
@@ -3807,22 +4052,6 @@ namespace myodd {
         // done
         return *this;
       }
-
-      // the string status, does it represent a number? a floating number?
-      // is it a partial or non partial number?
-      enum StringStatus {
-        StringStatus_Not_A_Number,                    // 'blah' or 'blah123'
-        StringStatus_Partial_Pos_Number,              // '+123blah'
-        StringStatus_Partial_Neg_Number,              // '-123blah'
-
-        StringStatus_Pos_Number,                      // '+123' or '123' or '0' or '-0'
-        StringStatus_Neg_Number,                      // '-123'
-
-        StringStatus_Floating_Partial_Pos_Number,    // '+123.00blah' or '123.00blah'
-        StringStatus_Floating_Partial_Neg_Number,    // '-123.00blah'
-        StringStatus_Floating_Pos_Number,            // '+123.1' or '123.1' or '0.1' or '-0.1'
-        StringStatus_Floating_Neg_Number,            // '-123.1'
-      };
 
       /**
       * Check if our string is a number or not.
