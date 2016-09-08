@@ -178,10 +178,12 @@ In a vector you could totally remove the data type
     // add a few items.
     myMap[1] = "Hello";
     myMap["Something"] = "Else";
+    myMap["Somewhere"] = "Else";  // set it
+    myMap["Somewhere"] = "Here";  // update it
   
     assert( myMap[1] == "Hello" );
     assert( myMap["Something"] == "Else" );
-  
+    assert( myMap["Somewhere"] == "Here" );
 
 #### Structure/classes.
 You can pass so called, trivial structures and classes.

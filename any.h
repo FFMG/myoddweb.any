@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.14"
+#define MYODD_ANY_VERSION        "0.1.15"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001014
+#define MYODD_ANY_VERSION_NUMBER 0001015
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -68,6 +68,7 @@ namespace myodd {
       * This is the type of comparaison we ar doing.
       */
       enum CompareType {
+        CompareType_Equal,
         CompareType_LessThan,
         CompareType_MoreThan
       };
@@ -433,7 +434,7 @@ namespace myodd {
         {
           try
           {
-            std::wstring value;
+            std::string value;
             any.CastToCharacters(value);
             stream << value.c_str();
           }
@@ -501,21 +502,14 @@ namespace myodd {
       * @param const Any &other the value we are comparing
       * @return bool if the values are equal
       */
-      bool operator==(const Any& other) const
-      {
-        return Equal(*this, other);
-      }
+      bool operator==(const Any& other) const { return Compare(*this, other, CompareType_Equal ); }
 
       /**
       * The friend equal operator.
       * @param const Any &other the value we are comparing
       * @return bool if the values are equal
       */
-      template<class T>
-      friend bool operator==(const T& lhs, const Any& rhs)
-      {
-        return Equal(Any(lhs), rhs);
-      }
+      template<class T> friend bool operator==(const T& lhs, const Any& rhs){ return Compare(Any(lhs), rhs, CompareType_Equal); }
 
       /**
       * The friend equal operator.
@@ -523,41 +517,28 @@ namespace myodd {
       * @param const T &rhs the rhs value we are comparing.
       * @return bool if the values are equal
       */
-      template<class T>
-      friend bool operator==(const Any& lhs, const T& rhs)
-      {
-        return Equal(lhs, Any(rhs));
-      }
+      template<class T> friend bool operator==(const Any& lhs, const T& rhs){ return Compare(lhs, Any(rhs), CompareType_Equal); }
 
       /**
       * The not equal operator
       * @param const Any &other the value we are comparing
       * @return bool if the values are _not_ equal
       */
-      bool operator!=(const Any &other) const
-      {
-        return !Equal(*this, other );
-      }
+      bool operator!=(const Any &other) const{ return !Compare(*this, other, CompareType_Equal); }
 
       /**
       * The friend equal operator.
       * @param const Any &other the value we are comparing
       * @return bool if the values are equal
       */
-      template<class T> friend bool operator!=(const T& lhs, const Any& rhs)
-      {
-        return !Equal(Any(lhs), rhs);
-      }
+      template<class T> friend bool operator!=(const T& lhs, const Any& rhs){ return !Compare(Any(lhs), rhs, CompareType_Equal); }
 
       /**
       * The friend equal operator.
       * @param const Any &other the value we are comparing
       * @return bool if the values are equal
       */
-      template<class T> friend bool operator!=(const Any& lhs, const T& rhs)
-      {
-        return !Equal(lhs, Any(rhs));
-      }
+      template<class T> friend bool operator!=(const Any& lhs, const T& rhs){ return !Compare(lhs, Any(rhs), CompareType_Equal); }
 
       /**
       * Relational operator less than
@@ -1647,9 +1628,40 @@ namespace myodd {
         // check for null types.
         if (dynamic::is_type_null(lhs.Type()) && dynamic::is_type_null(rhs.Type() ))
         {
-          // both are the same, so if both null then they are the same.
-          // all the values should be the same but there is no point in checking.
-          return false;
+          switch (compareType)
+          {
+          case CompareType_Equal:
+            // both are the same, so if both null then they are the same.
+            // all the values should be the same but there is no point in checking.
+            return true;
+
+          case CompareType_LessThan:
+          case CompareType_MoreThan:
+            // both are the same, so if both null then they are
+            // neither greater or less than the other one.
+            return false;
+
+          default:
+            throw std::runtime_error("Unknown compare type");
+          }
+        }
+
+        // are we comparing trivial structures
+        if (dynamic::is_type_copy(lhs.Type()) || dynamic::is_type_copy(rhs.Type()))
+        {
+          switch (compareType)
+          {
+          case CompareType_Equal:
+            return EqualCopy(lhs, rhs);
+
+          case CompareType_LessThan:
+          case CompareType_MoreThan:
+            // we cannot compare greater/less than objects.
+            return false;
+
+          default:
+            throw std::runtime_error("Unknown compare type");
+          }
         }
 
         // if either of them is a string, then we need to check them first.
@@ -1688,6 +1700,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((short)lhs._llivalue == (short)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((short)lhs._llivalue < (short)rhs._llivalue);
 
@@ -1703,6 +1718,9 @@ namespace myodd {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
+
             case CompareType_LessThan:
               return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
 
@@ -1718,6 +1736,9 @@ namespace myodd {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
+
             case CompareType_LessThan:
               return (lhs._llivalue < 0 || (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
 
@@ -1732,6 +1753,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
 
@@ -1750,6 +1774,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((int)lhs._llivalue == (int)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((int)lhs._llivalue < (int)rhs._llivalue);
 
@@ -1765,6 +1792,9 @@ namespace myodd {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
+
             case CompareType_LessThan:
               return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
 
@@ -1780,6 +1810,9 @@ namespace myodd {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (lhs._llivalue >= 0 && (unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
+
             case CompareType_LessThan:
               return (lhs._llivalue < 0 || (unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
 
@@ -1794,6 +1827,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((unsigned int)lhs._llivalue < (unsigned int)rhs._llivalue);
 
@@ -1812,6 +1848,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((long int)lhs._llivalue == (long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((long int)lhs._llivalue < (long int)rhs._llivalue);
 
@@ -1827,11 +1866,14 @@ namespace myodd {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
 
             case CompareType_MoreThan:
-              return (rhs._llivalue < 0 || (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+              return (rhs._llivalue < 0 || (unsigned long int)lhs._llivalue > (unsigned long int)rhs._llivalue);
 
             default:
               throw std::runtime_error("Unknown compare type");
@@ -1842,11 +1884,14 @@ namespace myodd {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return (lhs._llivalue < 0 || (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
 
             case CompareType_MoreThan:
-              return (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
+              return (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue > (unsigned long int)rhs._llivalue);
 
             default:
               throw std::runtime_error("Unknown compare type");
@@ -1856,6 +1901,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((unsigned long int)lhs._llivalue < (unsigned long int)rhs._llivalue);
 
@@ -1874,6 +1922,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((long long int)lhs._llivalue == (long long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((long long int)lhs._llivalue < (long long int)rhs._llivalue);
 
@@ -1889,6 +1940,9 @@ namespace myodd {
             // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
 
@@ -1904,6 +1958,9 @@ namespace myodd {
             // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
             switch (compareType)
             {
+            case CompareType_Equal:
+              return (lhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return (lhs._llivalue < 0 || (unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
 
@@ -1918,6 +1975,9 @@ namespace myodd {
           {
             switch (compareType)
             {
+            case CompareType_Equal:
+              return ((unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
+
             case CompareType_LessThan:
               return ((unsigned long long int)lhs._llivalue < (unsigned long long int)rhs._llivalue);
 
@@ -1934,6 +1994,9 @@ namespace myodd {
         case Floating_point_float:
           switch (compareType)
           {
+          case CompareType_Equal:
+            return ((float)lhs._ldvalue == (float)rhs._ldvalue);
+
           case CompareType_LessThan:
             return ((float)lhs._ldvalue < (float)rhs._ldvalue);
 
@@ -1948,11 +2011,14 @@ namespace myodd {
         case Floating_point_double:
           switch (compareType)
           {
+          case CompareType_Equal:
+            return ((double)lhs._ldvalue == (double)rhs._ldvalue);
+
           case CompareType_LessThan:
             return ((double)lhs._ldvalue < (double)rhs._ldvalue);
 
           case CompareType_MoreThan:
-            return ((double)lhs._ldvalue < (double)rhs._ldvalue);
+            return ((double)lhs._ldvalue > (double)rhs._ldvalue);
 
           default:
             throw std::runtime_error("Unknown compare type");
@@ -1962,11 +2028,14 @@ namespace myodd {
         case Floating_point_long_double:
           switch (compareType)
           {
+          case CompareType_Equal:
+            return (lhs._ldvalue == rhs._ldvalue);
+
           case CompareType_LessThan:
             return (lhs._ldvalue < rhs._ldvalue);
 
           case CompareType_MoreThan:
-            return (lhs._ldvalue < rhs._ldvalue);
+            return (lhs._ldvalue > rhs._ldvalue);
 
           default:
             throw std::runtime_error("Unknown compare type");
@@ -1991,6 +2060,12 @@ namespace myodd {
       */
       static bool CompareString(const Any& lhs, const Any& rhs, const CompareType& compareType)
       {
+        // the equal compare is slightly different.
+        if (compareType == CompareType_Equal)
+        {
+          return EqualString(lhs, rhs);
+        }
+
         // if either of them is _not_ a stringand we know the other is a string
         // then we have to treat the other as zero, (or maybe valid number)
         // for example 12 < "Hello"
@@ -2031,155 +2106,7 @@ namespace myodd {
           throw std::runtime_error("Unknown compare type");
         }
       }
-
-      /**
-      * Compare 2 values and return 0 if they are both the same.
-      * @param const Any& lhs the lhs value been compared.
-      * @param const Any& rhs the lhs value been compared.
-      * @return short, 0 if equal < 0 or > 0 if not same.
-      */
-      static bool Equal(const Any& lhs, const Any& rhs)
-      {
-        // validates that we have known types.
-        if (!dynamic::is_known_type(lhs.Type()) || !dynamic::is_known_type(rhs.Type()) )
-        {
-          throw std::runtime_error("Unknown data Type");
-        }
-
-        // check for null types.
-        if (dynamic::is_type_null( lhs.Type() ) && dynamic::is_type_null(rhs.Type()) )
-        {
-          // both are the same, so if both null then they are the same.
-          // all the values should be the same but there is no point in checking.
-          return true;
-        }
-
-        // are we comparing trivial structures
-        if (dynamic::is_type_copy(lhs.Type()) || dynamic::is_type_copy(rhs.Type()))
-        {
-          return EqualCopy(lhs, rhs);
-        }
-
-        // if either value is a string then we have to compare the values to see if they are similar.
-        if (dynamic::is_type_character(lhs.Type()) || dynamic::is_type_character(rhs.Type()))
-        {
-          return EqualString(lhs, rhs);
-        }
-
-        // otherwise check them as numbers.
-        return EqualNumber(lhs, rhs);
-      }
-
-      /**
-      * Do a number compare of string or fundamental types.
-      * @throw if we are unable to compare, (not same types, not same sizes etc...)
-      * @param const Any& lhs the left hand side value.
-      * @param const Any& rhs the right hand side value.
-      * @return bool if they are equal or not.
-      */
-      static bool EqualNumber(const Any& lhs, const Any& rhs)
-      {
-        auto type = CalculateType(lhs, rhs);
-        switch (type)
-        {
-        case Boolean_bool:
-        case Character_signed_char:
-        case Character_unsigned_char:
-        case Character_char:
-        case Character_wchar_t:
-          throw std::runtime_error("Logic error, the function CalculateType() should never return those types.");
-
-          // Integer
-        case Integer_short_int:
-        case Integer_unsigned_short_int:
-          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
-          {
-            return ((short)lhs._llivalue == (short)rhs._llivalue);
-          }
-          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
-          {
-            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
-          }
-          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
-          {
-            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            return (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
-          }
-          return ((unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
-
-        case Integer_int:
-        case Integer_unsigned_int:
-          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
-          {
-            return ((int)lhs._llivalue == (int)rhs._llivalue);
-          }
-          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
-          {
-            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            return (rhs._llivalue >= 0 && (unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
-          }
-          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
-          {
-            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            return (lhs._llivalue >= 0 && (unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
-          }
-          return ((unsigned int)lhs._llivalue == (unsigned int)rhs._llivalue);
-
-        case Integer_long_int:
-        case Integer_unsigned_long_int:
-          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
-          {
-            return ((long int)lhs._llivalue == (long int)rhs._llivalue);
-          }
-          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
-          {
-            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            return (rhs._llivalue >= 0 && (unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
-          }
-          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
-          {
-            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            return (lhs._llivalue >= 0 && (unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
-          }
-          return ((unsigned long int)lhs._llivalue == (unsigned long int)rhs._llivalue);
-
-        case Integer_long_long_int:
-        case Integer_unsigned_long_long_int:
-          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
-          {
-            return ((long long int)lhs._llivalue == (long long int)rhs._llivalue);
-          }
-          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
-          {
-            // as we know that rhs is signed then if rhs < 0 then the 2 values cannot be equal
-            return (rhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
-          }
-          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
-          {
-            // as we know that lhs is signed then if lhs < 0 then the 2 values cannot be equal
-            return (lhs._llivalue >= 0 && (unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
-          }
-          return ((unsigned long long int)lhs._llivalue == (unsigned long long int)rhs._llivalue);
-
-          // Floating point
-        case Floating_point_float:
-          return ((float)lhs._ldvalue == (float)rhs._ldvalue);
-
-        case Floating_point_double:
-          return ((double)lhs._ldvalue == (double)rhs._ldvalue);
-
-        case Floating_point_long_double:
-          return (lhs._ldvalue == rhs._ldvalue);
-
-        default:
-          throw std::bad_cast();
-        }
-
-        // never reached
-        return true;
-      }
-
+      
       /**
       * Compare two non-number strings.
       * This function assumes that both values are string and either of them is _not_ a number.
@@ -2196,7 +2123,7 @@ namespace myodd {
         // for example 0 == "Hello"
         if (!dynamic::is_type_character(lhs.Type()) || !dynamic::is_type_character(rhs.Type()))
         {
-          return EqualNumber(lhs, rhs);
+          return CompareNumber(lhs, rhs, CompareType_Equal );
         }
 
         // if both of those strings are full numbers then we could compare them as numbers.
@@ -2204,7 +2131,7 @@ namespace myodd {
         // so "12 Hello" != "12 Bye" but "12.0" == "12"
         if (lhs.IsStringNumber(false) && rhs.IsStringNumber(false))
         {
-          return EqualNumber(lhs, rhs);
+          return CompareNumber(lhs, rhs, CompareType_Equal);
         }
 
         //  if we are here, then neither values can be null.
@@ -3611,9 +3538,6 @@ namespace myodd {
           throw std::bad_cast();
 
         case dynamic::Misc_null:
-          value = '\0';
-          break;
-
         case dynamic::Character_wchar_t:
           if (nullptr == _svalue)
           {
@@ -3673,14 +3597,11 @@ namespace myodd {
         case dynamic::Misc_copy_ptr:
           throw std::bad_cast();
 
-        case dynamic::Misc_null:
-          value = '\0';
-          break;
-
         case dynamic::Character_wchar_t:
           value = static_cast<wchar_t*>((void*)_cvalue);
           break;
 
+        case dynamic::Misc_null:
         case dynamic::Character_char:
         case dynamic::Character_signed_char:
         case dynamic::Character_unsigned_char:
@@ -3734,6 +3655,10 @@ namespace myodd {
         // are we a char?
         switch (Type())
         {
+        case dynamic::Misc_null:
+          *_swvalue = L"";
+          return;
+
         case dynamic::Character_char:
         case dynamic::Character_unsigned_char:
         case dynamic::Character_signed_char:
@@ -3751,7 +3676,6 @@ namespace myodd {
         }
 
         case dynamic::Misc_unknown:
-        case dynamic::Misc_null:
         case dynamic::Misc_copy:
         case dynamic::Misc_copy_ptr:
         case dynamic::Boolean_bool:
@@ -3798,8 +3722,14 @@ namespace myodd {
         //  we will need a new string
         _svalue = new std::string();
 
-        // are we a wchar_t?
-        if (Type() == dynamic::Character_wchar_t)
+        // are we a char?
+        switch (Type())
+        {
+        case dynamic::Misc_null:
+          *_svalue = "";
+          return;
+
+        case dynamic::Character_wchar_t:
         {
           if (nullptr == _cvalue)
           {
@@ -3811,6 +3741,33 @@ namespace myodd {
           std::wstring_convert<convert_typeX, wchar_t> converterX;
           *_svalue = converterX.to_bytes((const wchar_t*)_cvalue);
           return;
+        }
+
+        case dynamic::Character_char:
+        case dynamic::Character_unsigned_char:
+        case dynamic::Character_signed_char:
+
+        case dynamic::Misc_unknown:
+        case dynamic::Misc_copy:
+        case dynamic::Misc_copy_ptr:
+        case dynamic::Boolean_bool:
+        
+        case dynamic::Integer_short_int:
+        case dynamic::Integer_unsigned_short_int:
+        case dynamic::Integer_int:
+        case dynamic::Integer_unsigned_int:
+        case dynamic::Integer_long_int:
+        case dynamic::Integer_unsigned_long_int:
+        case dynamic::Integer_long_long_int:
+        case dynamic::Integer_unsigned_long_long_int:
+        case dynamic::Floating_point_float:
+        case dynamic::Floating_point_double:
+        case dynamic::Floating_point_long_double:
+          break;
+
+        default:
+          // unknown
+          throw std::runtime_error("Unknown data Type");
         }
 
         if (dynamic::is_type_floating(NumberType()))
