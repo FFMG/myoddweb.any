@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.15"
+#define MYODD_ANY_VERSION        "0.1.16"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001015
+#define MYODD_ANY_VERSION_NUMBER 0001016
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -1609,7 +1609,6 @@ namespace myodd {
         return type;
       }
 
-
       /**
        * Calculate if the lhs is 'smaller' then the rhs
        * @param const Any& lhs the lhs value been compared.
@@ -1691,82 +1690,11 @@ namespace myodd {
         case Character_unsigned_char:
         case Character_char:
         case Character_wchar_t:
-          throw std::runtime_error("Logic error, the function CalculateType() should never return those types.");
 
-          // Integer
+        // short integers are always converted to Integer_Int
         case Integer_short_int:
         case Integer_unsigned_short_int:
-          if (lhs.UseSignedInteger() && rhs.UseSignedInteger())
-          {
-            switch (compareType)
-            {
-            case CompareType_Equal:
-              return ((short)lhs._llivalue == (short)rhs._llivalue);
-
-            case CompareType_LessThan:
-              return ((short)lhs._llivalue < (short)rhs._llivalue);
-
-            case CompareType_MoreThan:
-              return ((short)lhs._llivalue > (short)rhs._llivalue);
-
-            default:
-              throw std::runtime_error( "Unknown compare type" );
-            }
-          }
-          else if (lhs.UseUnsignedInteger() && rhs.UseSignedInteger())
-          {
-            // as we know that rhs is signed then if rhs < 0 then it must be smaller than unsigned lhs
-            switch (compareType)
-            {
-            case CompareType_Equal:
-              return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
-
-            case CompareType_LessThan:
-              return (rhs._llivalue >= 0 && (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
-
-            case CompareType_MoreThan:
-              return (rhs._llivalue < 0 || (unsigned short)lhs._llivalue > (unsigned short)rhs._llivalue);
-
-            default:
-              throw std::runtime_error("Unknown compare type");
-            }
-          }
-          else if (lhs.UseSignedInteger() && rhs.UseUnsignedInteger())
-          {
-            // as we know that lhs is signed then if lhs < 0 then it must be smaller than unsigned rhs
-            switch (compareType)
-            {
-            case CompareType_Equal:
-              return (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
-
-            case CompareType_LessThan:
-              return (lhs._llivalue < 0 || (unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
-
-            case CompareType_MoreThan:
-              return (lhs._llivalue >= 0 && (unsigned short)lhs._llivalue > (unsigned short)rhs._llivalue);
-
-            default:
-              throw std::runtime_error("Unknown compare type");
-            }
-          }
-          else
-          {
-            switch (compareType)
-            {
-            case CompareType_Equal:
-              return ((unsigned short)lhs._llivalue == (unsigned short)rhs._llivalue);
-
-            case CompareType_LessThan:
-              return ((unsigned short)lhs._llivalue < (unsigned short)rhs._llivalue);
-
-            case CompareType_MoreThan:
-              return ((unsigned short)lhs._llivalue > (unsigned short)rhs._llivalue);
-
-            default:
-              throw std::runtime_error("Unknown compare type");
-            }
-          }
-          break;
+          throw std::runtime_error("Logic error, the function CalculateType() should never return those types.");
 
         case Integer_int:
         case Integer_unsigned_int:
