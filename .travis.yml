@@ -5,7 +5,7 @@ dist: trusty
 language: cpp
 
 compiler:
-  - clang
+  - gcc
 
 env: 
  - LLVM_VERSION=3.8.1
