@@ -24,7 +24,7 @@
 // ***********************************************************************
 
 #include <iostream>
-#include "..\any.h"
+#include "any.h"
 
 #include "vector.h"
 #include "map.h"
