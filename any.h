@@ -62,6 +62,7 @@
 #include <stdlib.h>       //  std::strtoll / std::strtoull
 #include <type_traits>    //  std::is_trivially_copyable
                           //  std::is_pointer
+#include <cstddef>        //  nullptr_t
 #include <memory>         //  std::unique_ptr
 
 #include "types.h"        // data type
