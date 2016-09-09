@@ -25,13 +25,27 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.16"
+#define MYODD_ANY_VERSION        "0.1.17"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001016
+#define MYODD_ANY_VERSION_NUMBER 0001017
+
+/* What version of GCC is being used.  0 means GCC is not being used */
+/* from sqlite 3*/
+#ifdef __GNUC__
+# define GCC_VERSION (__GNUC__*1000000+__GNUC_MINOR__*1000+__GNUC_PATCHLEVEL__)
+#else
+# define GCC_VERSION 0
+#endif
+
+#define MYODD_ANY_USE_CODE_CONVERSION 1
+//https ://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html#status.iso.2011
+#if defined(__GNUC__) && GCC_VERSION < 5000000
+# undef MYODD_ANY_USE_CODE_CONVERSION
+#endif
 
 #include <typeinfo>       // std::bad_cast
 #include <algorithm>      // memcpy
@@ -39,7 +53,11 @@
 #include <cstring>
 #include <locale>		      //  std::wstring_convert
 #include <cctype>         //  isdigit
-#include <codecvt>        //  string <-> wstring
+
+#ifdef MYODD_ANY_USE_CODE_CONVERSION
+# include <codecvt>        //  string <-> wstring
+#endif
+
 #include <stdlib.h>       //  std::strtoll / std::strtoull
 #include <type_traits>    //  std::is_trivially_copyable
                           //  std::is_pointer
@@ -3597,9 +3615,13 @@ namespace myodd {
             return;
           }
 
+#ifdef MYODD_ANY_USE_CODE_CONVERSION
           using convert_typeX = std::codecvt_utf8<wchar_t>;
           std::wstring_convert<convert_typeX, wchar_t> converterX;
           *_swvalue = converterX.from_bytes((const char*)_cvalue);
+#else 
+          throw std::runtime_error("Cannot convert from string > wide string");
+#endif
           return;
         }
 
@@ -3665,9 +3687,13 @@ namespace myodd {
             return;
           }
 
+#ifdef MYODD_ANY_USE_CODE_CONVERSION
           using convert_typeX = std::codecvt_utf8<wchar_t>;
           std::wstring_convert<convert_typeX, wchar_t> converterX;
           *_svalue = converterX.to_bytes((const wchar_t*)_cvalue);
+#else 
+          throw std::runtime_error("Cannot convert from wide string > string");
+#endif
           return;
         }
 
