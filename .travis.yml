@@ -3,17 +3,6 @@ language: cpp
 
 matrix:
     include:
-        - env: COMPILER_VERSION=4.8
-          os: linux
-          compiler: g++
-          addons:
-              apt:
-                  sources:
-                      - ubuntu-toolchain-r-test
-                  packages:
-                      - g++-4.8
-                      - libcppunit-dev
-
         - env: COMPILER_VERSION=4.9
           os: linux
           compiler: g++
@@ -36,9 +25,6 @@ matrix:
                   packages:
                       - clang-3.5
                      - libcppunit-dev
-
-before_script:
-    - echo "Using compilers $CXX-${COMPILER_VERSION} and $CC-${COMPILER_VERSION}"
 
 script:
     - bash build.sh
