@@ -11,7 +11,7 @@ mkdir -p bin
 cd bin
 
 # Compile
-$CXX -c -o main.o ../examples/main.cpp -I../ -std=c++11
+$CXX -c -o main.o ../examples/main.cpp -I../
 
 # Link
 $CXX -o main main.o
