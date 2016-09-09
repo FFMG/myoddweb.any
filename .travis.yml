@@ -1,18 +1,19 @@
-sudo: false
 language: cpp
 
-matrix:
-    include:
-        - env: COMPILER_VERSION=4.9
-          os: linux
-          compiler: g++
-          addons:
-              apt:
-                  sources:
-                      - ubuntu-toolchain-r-test
-                  packages:
-                      - g++-4.9
-                      - libcppunit-dev
+sudo: required
 
 script:
-    - bash build.sh
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
+  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+  - gcc --version
+  - bash build.sh
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+    - g++-5
+  
+    
