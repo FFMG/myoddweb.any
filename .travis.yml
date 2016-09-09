@@ -5,14 +5,23 @@ dist: trusty
 language: cpp
 
 compiler:
-  - clang
+  - gcc-5
 
-env: 
- - LLVM_VERSION=3.8.1
-  
 os:
   - linux
 
 script:
   - bash build.sh
     
+matrix:
+  include:
+    - env: GCC_VERSION=5 BUILD_TYPE=Debug CPP=11 ASAN=Off LIBCXX=Off
+      os: linux
+      addons: &gcc5
+        apt:
+          packages:
+            - g++-5
+            - valgrind
+          sources:
+            - ubuntu-toolchain-r-test
+
