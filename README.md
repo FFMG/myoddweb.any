@@ -14,7 +14,7 @@ The home project is [myoddweb.any](https://github.com/FFMG/myoddweb.any), this i
 
 Include them in your project as you would include any other classes.
 
-The code was written and tested on `c++11`, I *suspect* it will work on older compiler with a couple of macros, but I will cross that bridge if/when someone ask for it.
+The code was written and tested on `c++14`, I *suspect* it will work on older compiler with a couple of macros, but I will cross that bridge if/when someone ask for it.
 C
 ## Usage
 
