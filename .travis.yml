@@ -6,9 +6,13 @@ language: cpp
 
 compiler:
   - clang
+
+env: 
+ - LLVM_VERSION=3.8.1
   
 os:
   - linux
-  
+
 script:
   - bash build.sh
+    
