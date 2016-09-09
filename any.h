@@ -25,13 +25,24 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.17"
+#define MYODD_ANY_VERSION        "0.1.16"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001017
+#define MYODD_ANY_VERSION_NUMBER 0001016
+
+#if defined(_MSC_VER)
+#   if _MSC_VER < 1800 
+#       error This project needs atleast Visual Studio 2013
+#   endif
+// 199711L - c++98
+// 201103L - c++11
+// 201300L - c++14
+#elif __cplusplus <= 201300L
+#   error This project can only be compiled with a compiler that supports C++14
+#endif
 
 /* What version of GCC is being used.  0 means GCC is not being used */
 /* from sqlite 3*/
@@ -41,10 +52,9 @@
 # define GCC_VERSION 0
 #endif
 
-#define MYODD_ANY_USE_CODE_CONVERSION 1
-//https ://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html#status.iso.2011
-#if defined(__GNUC__) && GCC_VERSION < 5000000
-# undef MYODD_ANY_USE_CODE_CONVERSION
+#ifndef nullptr_t 
+# include <cstddef>
+# define nullptr_t std::nullptr_t
 #endif
 
 #include <typeinfo>       // std::bad_cast
@@ -53,24 +63,13 @@
 #include <cstring>
 #include <locale>		      //  std::wstring_convert
 #include <cctype>         //  isdigit
-
-#ifdef MYODD_ANY_USE_CODE_CONVERSION
-# include <codecvt>        //  string <-> wstring
-#endif
-
+#include <codecvt>        //  string <-> wstring
 #include <stdlib.h>       //  std::strtoll / std::strtoull
 #include <type_traits>    //  std::is_trivially_copyable
                           //  std::is_pointer
 #include <memory>         //  std::unique_ptr
 
 #include "types.h"        // data type
-
-
-#if defined(__GNUC__) && GCC_VERSION < 5000000
-#include <cstddef>
-#define nullptr_t std::nullptr_t
-#endif
-
 
 namespace myodd {
   namespace _Check
@@ -3622,13 +3621,9 @@ namespace myodd {
             return;
           }
 
-#ifdef MYODD_ANY_USE_CODE_CONVERSION
           using convert_typeX = std::codecvt_utf8<wchar_t>;
           std::wstring_convert<convert_typeX, wchar_t> converterX;
           *_swvalue = converterX.from_bytes((const char*)_cvalue);
-#else 
-          throw std::runtime_error("Cannot convert from string > wide string");
-#endif
           return;
         }
 
@@ -3694,13 +3689,9 @@ namespace myodd {
             return;
           }
 
-#ifdef MYODD_ANY_USE_CODE_CONVERSION
           using convert_typeX = std::codecvt_utf8<wchar_t>;
           std::wstring_convert<convert_typeX, wchar_t> converterX;
           *_svalue = converterX.to_bytes((const wchar_t*)_cvalue);
-#else 
-          throw std::runtime_error("Cannot convert from wide string > string");
-#endif
           return;
         }
 
