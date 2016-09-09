@@ -65,6 +65,13 @@
 
 #include "types.h"        // data type
 
+
+#if defined(__GNUC__) && GCC_VERSION < 5000000
+#include <cstddef>
+#define nullptr_t std::nullptr_t
+#endif
+
+
 namespace myodd {
   namespace _Check
   {
