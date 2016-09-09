@@ -40,7 +40,7 @@
 // 199711L - c++98
 // 201103L - c++11
 // 201300L - c++14
-#elif __cplusplus <= 201300L
+#elif __cplusplus <= 201103L
 #   error This project can only be compiled with a compiler that supports C++14
 #endif
 
@@ -50,11 +50,6 @@
 # define GCC_VERSION (__GNUC__*1000000+__GNUC_MINOR__*1000+__GNUC_PATCHLEVEL__)
 #else
 # define GCC_VERSION 0
-#endif
-
-#ifndef nullptr_t 
-# include <cstddef>
-# define nullptr_t std::nullptr_t
 #endif
 
 #include <typeinfo>       // std::bad_cast
