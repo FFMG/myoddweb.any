@@ -2113,6 +2113,12 @@ namespace myodd {
         // are they both trivial?
         if (!dynamic::is_type_copy(lhs.Type()) || !dynamic::is_type_copy(rhs.Type()) )
         {
+          // if either one of them is of type copy, but
+          // not the other then they are not equal...
+          if (dynamic::is_type_copy(lhs.Type()) || dynamic::is_type_copy(rhs.Type()))
+          {
+            return false;
+          }
           // We cannot compare non trivials.
           throw std::bad_cast();
         }
