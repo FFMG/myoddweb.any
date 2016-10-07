@@ -25,13 +25,13 @@
 #pragma once
 
 // string representation of the version number
-#define MYODD_ANY_VERSION        "0.1.16"
+#define MYODD_ANY_VERSION        "0.1.17"
 
 // the version number is #.###.###
 // first number is major
 // then 3 numbers for minor
 // and 3 numbers for tiny
-#define MYODD_ANY_VERSION_NUMBER 0001016
+#define MYODD_ANY_VERSION_NUMBER 0001017
 
 #if defined(_MSC_VER)
 #   if _MSC_VER < 1800 
@@ -338,6 +338,17 @@ namespace myodd {
       * @see CastTo
       * @return T the template operator.
       */
+      operator std::string() const
+      {
+        // cast *this to value
+        return CastToChars();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
       operator char() const
       {
         // cast *this to value
@@ -416,6 +427,17 @@ namespace myodd {
       * @return T the template operator.
       */
       operator const wchar_t*() const
+      {
+        // cast *this to value
+        return CastToWideChars();
+      }
+
+      /**
+      * The T operator, cast a value to T
+      * @see CastTo
+      * @return T the template operator.
+      */
+      operator std::wstring() const
       {
         // cast *this to value
         return CastToWideChars();
