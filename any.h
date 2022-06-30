@@ -1,5 +1,5 @@
 // ***********************************************************************
-// Copyright (c) 2016 Florent Guelfucci
+// Copyright (c) 2016-2022 Florent Guelfucci
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -56,6 +56,7 @@
 #include <algorithm>      // memcpy
 #include <math.h>         // modf
 #include <cstring>
+#include <string>
 #include <locale>		      //  std::wstring_convert
 #include <cctype>         //  isdigit
 #include <codecvt>        //  string <-> wstring
@@ -66,6 +67,7 @@
 #include <memory>         //  std::unique_ptr
 
 #include "types.h"        // data type
+#include <iostream>       // std::cout, std::right, std::endl
 
 namespace myodd {
   namespace _Check
