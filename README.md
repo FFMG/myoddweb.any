@@ -1,4 +1,4 @@
-# Mydd.Any [![Build Status](https://travis-ci.org/FFMG/myoddweb.any.svg?branch=master)](https://travis-ci.org/FFMG/myoddweb.any)
+# Myodd.Any [![Build Status](https://travis-ci.org/FFMG/myoddweb.any.svg?branch=master)](https://travis-ci.org/FFMG/myoddweb.any)
 
 ## Introduction
 This class tries to introduce dynamic typing/Duck typing to c++, basically we try to remove the 'type' from the variable.
